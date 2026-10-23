@@ -9,13 +9,10 @@ your own browser, and you read it over and press Submit.
 It runs on a small always-on Fly.io machine with a password-protected dashboard you can use from
 your phone.
 
-```
-discover ─► free filter ─► AI title screen ─► fit score ─► draft ─────────► you, in Chrome
- company     location, age,  Haiku reads       Haiku, full   Sonnet: resume,   extension fills
- boards +    excluded co.,   titles, keeps     posting vs.   cover letter,     the form, you
- LinkedIn    never-consider  anything          your profile  every answer      review and submit
- alerts      titles          plausible         0–100
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/pipeline-dark.svg">
+  <img alt="Legwork pipeline: discover, filter, screen titles with Haiku, score fit with Haiku, draft with Sonnet, then you review and submit in Chrome." src="docs/pipeline-light.svg">
+</picture>
 
 ## Why it's built this way
 
