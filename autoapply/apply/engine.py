@@ -573,6 +573,24 @@ class FormFiller:
                         self._log(f"re-asked {len(missed)} unanswered question(s)")
                     except LLMError as e:
                         self._log(f"re-ask failed: {e}")
+                # Written answers speak as the candidate to the employer. One that explains its own limits
+                # ("I can't claim...") is rewritten once; any such sentence that survives is dropped.
+                flagged = [f for f in ask if f["type"] in ("text", "textarea") and f["key"] in by_key
+                           and any(mapping.meta_phrase(v) for v in by_key[f["key"]].values)]
+                if flagged:
+                    self._log(f"rewriting {len(flagged)} answer(s) that explained a gap instead of answering")
+                    try:
+                        for a in self.llm.answer_fields(self.job, flagged, extra=(
+                                "Rewrite: an earlier draft of these answers talked about what the candidate can't "
+                                "claim or doesn't have. Answer each question directly with what is true, and leave "
+                                "out anything the profile doesn't support without saying so.")):
+                            by_key[a.key] = a
+                    except LLMError as e:
+                        self._log(f"rewrite failed: {e}")
+                    for f in flagged:
+                        a = by_key.get(f["key"])
+                        if a:
+                            a.values = [mapping.strip_meta(v) for v in a.values]
                 for f in ask:
                     a = by_key.get(f["key"])
                     values = [v for v in (a.values if a else []) if v and v.strip()]

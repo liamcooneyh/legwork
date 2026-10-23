@@ -120,3 +120,27 @@ def test_salary_check_uses_the_posting_band():
     assert m.expected(field, profile, True, "")[1] == "$120,000–$150,000"   # no posted range: the profile's
     hourly = m.expected(field, profile, True, "$55 – $65 per hour")
     assert m.check_answer(hourly, ["65"]) is None
+
+
+def test_answers_that_explain_their_own_limits_are_caught():
+    caught = [
+        "I can't claim a personal story with 15Five that isn't mine, so I'll stay with what's true.",
+        "I use AI daily. I don't have a measured figure for time saved to quote.",
+        "The candidate has built several pipelines.",
+        "My profile doesn't show direct Workday experience, but I learn fast.",
+    ]
+    for text in caught:
+        assert m.meta_phrase(text), text
+    fine = [
+        "I can't wait to dig into usage-based billing.",
+        "I haven't used Kafka in production, but I've built streaming jobs with Pub/Sub.",
+        "At Zippin I built a self-service CPQ tool that cut quote turnaround by 90%.",
+    ]
+    for text in fine:
+        assert m.meta_phrase(text) is None, text
+
+
+def test_strip_meta_keeps_the_real_answer():
+    text = ("Claude Code is a core part of how I build. I check the SQL and the question. "
+            "I don't have a measured figure for time saved to quote.")
+    assert m.strip_meta(text) == "Claude Code is a core part of how I build. I check the SQL and the question."

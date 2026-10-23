@@ -603,10 +603,18 @@ class LLM:
         fine = re.compile(r"\b(this |which |so it |it )?(matches|is correct|looks (correct|fine)|no (issue|problem))\b", re.I)
         return [i for i in issues if not fine.search(i.problem)]
 
+    # Applications go to the employer in the candidate's name, so the writing never explains its own limits.
+    AS_CANDIDATE = (
+        "Voice: this goes to the employer in the candidate's name. Write as the candidate, to the employer. When the "
+        "profile doesn't have a detail (a number, a story, a personal connection), leave that detail out and answer "
+        "with what is true. Never mention the profile, what can or can't be claimed, missing figures, or that you're "
+        "avoiding invention: no disclaimers, caveats, or apologies about it. ")
+
     def cover_letter(self, job: dict) -> str | None:
         """A grounded cover letter, or None if it fails fact-checking twice."""
         task = (
             "Task: write a cover letter for the job below. 250-350 words, 3-4 paragraphs, first person. "
+            + self.AS_CANDIDATE +
             "Open with the specific role and one concrete reason the candidate fits. Connect 2-3 real "
             "experiences from the profile to the posting's needs. Mention something specific about the "
             "company only if it is stated in the posting. " + TOOL_NAMING + " Greeting and sign-off: follow the candidate's style "
@@ -631,7 +639,7 @@ class LLM:
                 FactCheck, effort="medium",
             )
             if not check.issues:
-                return letter
+                return self._without_disclaimers(letter)
             problems = "\n".join(f"- {i.problem}" for i in check.issues)
             letter = self._call(
                 "Task: revise the cover letter so every statement about the candidate is supported by the profile. "
@@ -642,9 +650,23 @@ class LLM:
             ).body.strip()
         return None
 
+    def _without_disclaimers(self, letter: str) -> str:
+        """A cover letter that talks about what it can't claim gets one rewrite; any such sentence that
+        survives is dropped."""
+        from .apply.mapping import meta_phrase, strip_meta
+
+        if not meta_phrase(letter):
+            return letter
+        letter = self._call(
+            "Task: revise the cover letter so it reads as the candidate writing to the employer. Remove or rewrite "
+            "every sentence that talks about what the candidate can't claim, what isn't in their background, missing "
+            "numbers, or the writing itself; keep every other sentence as it is. " + self.AS_CANDIDATE,
+            f"<cover_letter>\n{letter}\n</cover_letter>", CoverLetterOut, effort="medium").body.strip()
+        return strip_meta(letter)
+
     # -------------------------------------------------------------- form answers
 
-    def answer_fields(self, job: dict, fields: list[dict]) -> list[FieldAnswer]:
+    def answer_fields(self, job: dict, fields: list[dict], extra: str = "") -> list[FieldAnswer]:
         """Answer every question on an application form, with the whole form in view. The profile
         is the only source of facts; anything it doesn't cover is left blank for the candidate."""
         found_via = ("a LinkedIn job alert (LinkedIn)" if job.get("source") == "linkedin_alert"
@@ -694,10 +716,10 @@ class LLM:
             "'unknown'. A blank goes to the candidate to answer; a wrong answer goes to an employer.\n"
             "Writing (text/textarea open questions such as \"Why us?\" or \"Describe a time...\"): 2-5 specific, "
             "truthful first-person sentences grounded in the profile and the posting, unless the label asks for a "
-            "different length. " + TOOL_NAMING + "\n"
+            "different length. " + TOOL_NAMING + " " + self.AS_CANDIDATE + "\n"
             "source is 'profile' for facts from the profile, 'job_posting' when the answer comes from the posting, "
             "'written' for composed prose, 'unknown' when left blank."
-        )
+        ) + (f"\n{extra}" if extra else "")
         payload = [{k: f.get(k) for k in ("key", "label", "type", "required", "options", "description", "max_length")
                     if f.get(k)} for f in fields]
         content = (

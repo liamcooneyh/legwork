@@ -380,3 +380,35 @@ def best_place(value: str, options: list[str], city: str = "", state: str = "", 
         if score > best_score:
             best, best_score = o, score
     return best if best_score >= 3 else None
+
+
+# ------------------------------------------------------------------ written answers
+
+# Sentences where the writing explains its own limits to the employer ("I can't claim...", "I don't have
+# a measured figure to quote") instead of answering as the candidate.
+_A = r"(?:'|’)?"
+META = re.compile(
+    r"\b(?:can" + _A + r"t|cannot|won" + _A + r"t|don" + _A + r"t|do not|will not)\s+(?:honestly\s+|truthfully\s+|really\s+)?"
+    r"(?:claim|invent|make up|fabricate|speak to|point to|quote|cite)\b"
+    r"|\bisn" + _A + r"t mine\b|\bstay with what" + _A + r"s true\b"
+    r"|\bI don" + _A + r"t have (?:a|any) (?:measured|specific|exact|concrete|hard|precise) (?:figure|number|metric|data|stat)"
+    r"|\b(?:my|the) profile (?:doesn" + _A + r"t|does not|lacks|has no|shows no)\b"
+    r"|\bthe candidate\b"
+    r"|\bwithout (?:inventing|making (?:anything|something) up|overstating)\b",
+    re.I)
+
+
+def meta_phrase(text: str) -> str | None:
+    """The first phrase that explains a gap instead of answering, or None."""
+    m = META.search(text or "")
+    return m.group(0) if m else None
+
+
+def strip_meta(text: str) -> str:
+    """Drop the sentences that contain such a phrase, keeping everything else as written."""
+    paragraphs = []
+    for para in (text or "").split("\n"):
+        sentences = re.split(r"(?<=[.!?])\s+", para)
+        kept = [s for s in sentences if not META.search(s)]
+        paragraphs.append(" ".join(kept))
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(paragraphs)).strip()
