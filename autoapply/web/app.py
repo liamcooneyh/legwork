@@ -13,7 +13,7 @@ from urllib.parse import quote, urlparse
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
@@ -219,6 +219,13 @@ PRIVACY = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta na
 </ul>
 {contact}
 </body></html>"""
+
+
+@app.get("/favicon.svg")
+def favicon() -> Response:
+    """Pip's face, for the browser tab (no sign-in needed: browsers fetch it on their own)."""
+    return Response((Path(__file__).parent / "static" / "favicon.svg").read_text(), media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/privacy", response_class=HTMLResponse)
