@@ -1,0 +1,18 @@
+{% import "_cells.html" as cell with context %}
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th>Status</th><th class="hide-sm">Updated</th>' ~ ('<th></th>' if row_actions else '')) }}</tr>
+  {% for j in rows %}
+  <tr data-remote="{{ 1 if j | remote else 0 }}">
+    {{ cell.core(j) }}
+    <td><span class="pill {{ j.status }}">{{ j.status | label }}</span>{% if j.status_reason %}<br><span class="muted" style="font-size:12px">{{ j.status_reason[:140] }}</span>{% endif %}</td>
+    <td class="hide-sm muted" data-sort="{{ j.updated_at }}">{{ (j.updated_at | et) }}</td>
+    {% if row_actions == 'needs' %}<td class="act"><div class="rowacts">
+      <a class="button primary" href="/job/{{ j.id | q }}#needs" title="Answer the questions it stopped on">Answer</a>
+      {% set fu = j | fill_url %}{% if fu %}<a class="button" href="{{ fu }}" target="_blank" rel="noopener" title="Fill what's prepared and finish the rest yourself">Fill in Chrome ↗</a>{% endif %}
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="skip"><input type="hidden" name="back" value="home"><button class="quiet">Skip</button></form>
+    </div></td>{% endif %}
+  </tr>
+  {% else %}
+  <tr><td colspan="{{ 7 if row_actions else 6 }}" class="muted">Nothing here.</td></tr>
+  {% endfor %}
+</table></div>

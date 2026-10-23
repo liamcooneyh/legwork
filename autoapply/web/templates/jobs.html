@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Jobs · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Jobs{% if status %}: {{ status | label }}{% endif %}</h1>
+{% set groups = [
+  ("Your move", ["ready", "needs_manual", "manual_linkedin", "failed"]),
+  ("In progress", ["new", "screen", "prefiltered", "matched", "held", "dry_run", "submitting"]),
+  ("Done", ["applied"]),
+  ("Set aside", ["rejected", "screened_out", "filtered_out", "skipped", "closed"]),
+] %}
+<div class="chipgroups">
+  <div class="chipgroup"><span class="chiplabel">Show</span>
+    <a class="pill{% if not status %} on{% endif %}" href="/jobs">all active</a></div>
+  {% for name, ss in groups %}{% set shown = ss | select("in", counts) | list %}
+  {% if shown or status in ss %}<div class="chipgroup"><span class="chiplabel">{{ name }}</span>
+    {% for s in ss %}{% if counts.get(s, 0) or s == status %}<a class="pill {{ s }}{% if s == status %} on{% endif %}" href="/jobs?status={{ s }}">{{ s | label }} <b>{{ counts.get(s, 0) }}</b></a>{% endif %}{% endfor %}
+  </div>{% endif %}{% endfor %}
+</div>
+<span hidden data-joins-search>{% include "_remote_toggle.html" %}</span>
+{% set rows = jobs %}{% include "_jobrows.html" %}
+{% endblock %}

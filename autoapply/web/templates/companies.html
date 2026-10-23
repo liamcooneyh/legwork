@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Companies · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Companies</h1>
+<p class="muted">The {{ rows|length }} company job boards checked every run. Companies whose jobs show up in your LinkedIn alerts are added automatically.</p>
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+
+<form method="post" action="/companies/add" class="panel bar">
+  <input name="name" placeholder="Company name, or a link to one of its job postings" required
+         style="flex:1;min-width:240px;font:inherit;padding:7px 10px">
+  <button class="primary">Add company</button>
+  <span class="muted" style="font-size:13px">Works for companies on Greenhouse, Lever, or Ashby. Checking can take a few seconds.</span>
+</form>
+
+<p class="muted" style="font-size:13px;margin:16px 0 8px">Sorted by jobs passing your filters. Counts update after each run.</p>
+<div class="table-wrap"><table id="boards">
+  <tr><th>Company board</th><th>Passing filters</th><th class="hide-sm">Jobs seen</th><th class="hide-sm">Applied</th><th class="hide-sm">Source</th><th></th></tr>
+  {% for r in rows %}
+  <tr data-name="{{ r.board }}">
+    <td><b>{{ r.board }}</b> <span class="muted" style="font-size:12px">{{ r.ats }}</span></td>
+    <td class="score">{{ r.passing }}</td>
+    <td class="hide-sm">{{ r.total }}</td>
+    <td class="hide-sm">{{ r.applied }}</td>
+    <td class="hide-sm muted">{{ r.source }}</td>
+    <td class="act"><div class="rowacts"><form class="inline" method="post" action="/companies/remove"><input type="hidden" name="board" value="{{ r.ats }}:{{ r.board }}"><button class="quiet">Remove</button></form></div></td>
+  </tr>
+  {% endfor %}
+</table></div>
+
+{% if removed %}
+<h2>Removed</h2>
+<div class="bar">{% for b in removed %}
+  <form class="inline" method="post" action="/companies/restore"><input type="hidden" name="board" value="{{ b }}"><button title="Watch again">{{ b.split(':', 1)[1] }} ↺</button></form>
+{% endfor %}</div>
+{% endif %}
+{% endblock %}

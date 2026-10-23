@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} · Auto-Apply{% endblock %}
+{% block content %}
+{% set score = job.score_json | fromjson %}
+<h1>{{ job.title }}</h1>
+<p class="muted" style="margin-top:2px">{{ job.company }} · {{ job.location or "location not listed" }}{% if job.compensation %} · {{ job.compensation }}{% endif %}{% set p = job | posted %}{% if p %} · <span title="{{ p.title }}">{{ p.label }} {{ p.when }} ({{ p.ago }})</span>{% endif %}{% if job.source == 'linkedin_alert' %} · found via LinkedIn alert{% endif %}</p>
+<p class="job-links"><a href="{{ job.url or job.apply_url }}" target="_blank" rel="noopener">Original posting ↗</a>{% if job.ats != 'linkedin' %}<a href="{{ job.apply_url }}" target="_blank" rel="noopener">Application form ↗</a>{% endif %}{% if job.linkedin_url and job.status != 'manual_linkedin' %}<a href="{{ job.linkedin_url }}" target="_blank" rel="noopener">LinkedIn ↗</a>{% endif %}</p>
+
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+{% if preparing_now %}
+<section class="panel prep" id="prep" style="margin-bottom:14px;border-color:var(--accent)">
+  <div class="bar" style="gap:10px"><span class="pill live">Preparing</span><b id="prep-step">Starting…</b><span style="flex:1"></span><span class="muted" id="prep-time" style="font-variant-numeric:tabular-nums"></span></div>
+  <div class="prep-meter"><i id="prep-bar"></i></div>
+  <ol class="prep-steps" id="prep-steps"></ol>
+  <p class="muted" style="font-size:13px;margin:6px 0 0">A fresh resume, cover letter (if the form asks), and answers for just this job. The page refreshes by itself when it's done.</p>
+</section>
+<style>
+  .prep-meter { height: 12px; border-radius: 999px; background: var(--chip); overflow: hidden; margin: 12px 0 10px; }
+  .prep-meter i { display: block; height: 100%; width: 4%; border-radius: 999px; transition: width .6s ease;
+    background: repeating-linear-gradient(45deg, var(--accent-fill) 0 10px, #ff9cc8 10px 20px); background-size: 28px 100%; animation: stripes 1.2s linear infinite; }
+  .prep-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .prep-steps li { font-size: 13px; padding: 2px 10px; border-radius: 999px; border: 1px dashed var(--divider); color: var(--muted); }
+  .prep-steps li.done { background: var(--lime-bg); color: var(--lime); border: 1px solid transparent; }
+  .prep-steps li.now { background: var(--pink-bg); color: var(--text); border: 1px solid var(--accent); font-weight: 600; }
+</style>
+<script>
+(function () {
+  var url = "/prepare-progress/{{ job.id | q }}", started = null;
+  function $(id) { return document.getElementById(id); }
+  function render(p) {
+    if (p.started_at && !started) started = new Date(p.started_at);
+    var steps = p.steps || [], done = p.done || [], idx = steps.findIndex(function (s) { return s[0] === p.step; });
+    $("prep-step").textContent = idx >= 0 ? steps[idx][1] + "…" : "Starting…";
+    $("prep-steps").innerHTML = steps.map(function (s, i) {
+      var cls = s[0] === p.step ? "now" : (done.indexOf(s[0]) >= 0 ? "done" : "");
+      return '<li class="' + cls + '">' + (cls === "done" ? "✓ " : "") + s[1] + "</li>";
+    }).join("");
+    var pct = idx >= 0 ? Math.max(4, Math.round(100 * (idx + 0.5) / steps.length)) : 4;
+    $("prep-bar").style.width = pct + "%";
+  }
+  function tick() { if (started) { var s = Math.floor((Date.now() - started) / 1000); $("prep-time").textContent = Math.floor(s / 60) + "m " + String(s % 60).padStart(2, "0") + "s"; } }
+  function poll() {
+    fetch(url, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (p) {
+      if (!p.running) { location.href = location.pathname + "?msg=" + encodeURIComponent("The fresh draft is ready below."); return; }
+      render(p); setTimeout(poll, 2000);
+    }).catch(function () { setTimeout(poll, 4000); });
+  }
+  setInterval(tick, 1000); poll();
+})();
+</script>
+{% endif %}
+{% macro act(action, label, title="", cls="") %}<form class="inline" method="post" action="/job/{{ job.id | q }}/action"><input type="hidden" name="action" value="{{ action }}"><button class="{{ cls }}" title="{{ title }}">{{ label }}</button></form>{% endmacro %}
+{% macro post(path, label, title="", cls="", fields={}) %}<form class="inline" method="post" action="{{ path }}">{% for k, v in fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}<button class="{{ cls }}" title="{{ title }}">{{ label }}</button></form>{% endmacro %}
+{% set jp = "/job/" ~ (job.id | q) %}
+{% set fillable = job.ats in ('greenhouse', 'lever', 'ashby') %}
+{% set st = job.status %}
+
+<div class="actions panel">
+  <div class="actions-info">
+    <span class="pill {{ st }}">{{ st | label }}</span>
+    <span class="hint">
+      {% if st == 'ready' %}Nothing sent yet. Review it below, then <i>Fill in Chrome</i>: the extension fills the form and you press Submit.
+      {% elif st == 'submitting' %}Submitting now. Refresh in a minute.
+      {% elif st == 'needs_manual' %}{{ job.status_reason or "Stopped on a question or two." }} Answer below, or open it in Chrome and finish there.
+      {% elif st == 'matched' %}Queued: it's prepared on the next run, or prepare it now.
+      {% elif st == 'held' %}{{ job.status_reason or "Held: one role per company." }}
+      {% elif st == 'manual_linkedin' %}{{ job.status_reason or "LinkedIn only: you apply on the employer's site." }}
+      {% elif st == 'applied' %}{{ job.status_reason or "Applied." }} Replies are tracked below.
+      {% elif st == 'rejected' %}{{ job.status_reason or "Scored below your minimum fit score." }} If it's wrong, mark it relevant and it gets prepared.
+      {% else %}{{ job.status_reason or "" }}{% endif %}
+    </span>
+  </div>
+  {% if st != 'submitting' and st != 'applied' %}
+  <div class="actions-buttons">
+    {# the main action for this state #}
+    {% if st in ('ready', 'needs_manual') and fill_url and has_draft %}<a class="button primary" href="{{ fill_url }}" target="_blank" rel="noopener">Fill in Chrome ↗</a>
+    {% elif st == 'held' %}{{ post(jp ~ "/company-swap", "Prepare this one instead", "Prepare this role; the company's other prepared or queued roles are held", "primary") }}
+    {% elif st == 'manual_linkedin' and job.lookup_at is none and job.score is none %}{{ post("/linkedin/lookup", "Look up & score", "Find the employer's own posting, read it, and score it (about 1.5¢)", "primary", {"job_id": job.id, "back": "job"}) }}
+    {% elif st == 'manual_linkedin' %}{{ post(jp ~ "/materials", "Prepare resume & cover letter", "Tailored materials for applying on the employer's site", "primary") }}
+    {% elif st in ('screened_out', 'filtered_out', 'rejected') %}{{ post(jp ~ "/rescue", "This looks relevant", "", "primary") }}
+    {% elif fillable %}{{ post(jp ~ "/prepare-now", "Prepare now" if not has_draft else "Re-prepare now", "Re-score, then a draft for just this job, right now (1-2 minutes, ~10-15¢)", "primary") }}{% endif %}
+
+    {# one common second action #}
+    {% if st == 'ready' %}{{ act("applied_myself", "Mark as applied", "You submitted it; saves what was sent and starts tracking replies") }}
+    {% elif st == 'needs_manual' %}{{ act("applied_myself", "I applied myself") }}
+    {% elif st == 'held' %}{{ post(jp ~ "/company-swap", "Prepare this one too", "Apply to both", "", {"keep_other": "1"}) }}
+    {% elif st == 'manual_linkedin' and job.linkedin_url %}<a class="button" href="{{ job.linkedin_url }}" target="_blank" rel="noopener">Open on LinkedIn ↗</a>{% endif %}
+
+    {# everything else #}
+    <details class="more">
+      <summary class="button">More ▾</summary>
+      <div class="more-menu">
+        {% if fillable and st in ('ready', 'needs_manual') %}{{ post(jp ~ "/prepare-now", "Re-prepare now", "Re-score, then a fresh draft for just this job, right now (~10-15¢)") }}{% endif %}
+        {% if fillable and st in ('ready', 'needs_manual', 'failed', 'skipped', 'closed') %}{{ act("retry", "Re-prepare on next run", "The next run re-scores it, then makes a fresh draft if it still fits") }}{% endif %}
+        {% if fillable and st in ('held', 'rejected', 'screened_out', 'filtered_out', 'matched') and st != 'matched' %}{{ post(jp ~ "/prepare-now", "Prepare now", "A draft for just this job, right now (~10-15¢)") }}{% endif %}
+        {% if st == 'manual_linkedin' and job.lookup_at is none and job.score is none %}{{ post(jp ~ "/materials", "Prepare resume & cover letter") }}{% endif %}
+        {% if st not in ('ready', 'needs_manual') %}{{ act("applied_myself", "I applied myself") }}{% endif %}
+        {{ act("rescore", "Re-score", "Score it again against your current profile") }}
+        {% if st != 'skipped' %}{{ act("skip", "Skip this job", "", "danger") }}{% endif %}
+      </div>
+    </details>
+  </div>
+  {% endif %}
+</div>
+
+{% if needs %}
+<form method="post" action="/job/{{ job.id | q }}/answer" class="panel needs" style="margin-top:14px;border-color:var(--sun)">
+  <h2 id="needs" style="margin-top:0;scroll-margin-top:80px">Answer {{ needs|length }} question{{ 's' if needs|length != 1 }} to finish</h2>
+  <p class="muted" style="margin-top:0;font-size:14px">Everything else is already answered. Answer these and it moves to Ready, where the extension fills the whole form in your Chrome.</p>
+  {% for q in needs %}{% set i = loop.index0 %}
+  <div class="need">
+    <input type="hidden" name="q_{{ i }}" value="{{ q.label }}">
+    <b>{{ q.label }}</b>
+    {% if q.note %}<div class="muted" style="font-size:13px;margin:2px 0 6px">Why it stopped: {{ q.note }}</div>{% endif %}
+    {% if q.type == 'check' %}
+      <label class="opt"><input type="checkbox" name="ok_{{ i }}" value="1"> I checked the form screenshot below: this is fine as is</label>
+      <input type="text" name="a_{{ i }}" placeholder="…or type the correct answer for this field" style="width:100%;margin-top:4px">
+    {% elif q.type == 'checkbox' %}
+      <label class="opt"><input type="radio" name="a_{{ i }}" value="Yes" {% if not q.tried or q.tried[0] != 'No' %}checked{% endif %}> Tick it</label>
+      <label class="opt"><input type="radio" name="a_{{ i }}" value="No"> Leave it unticked</label>
+    {% elif q.options and q.type == 'checkbox_group' %}
+      {% for o in q.options %}<label class="opt"><input type="checkbox" name="a_{{ i }}" value="{{ o }}" {% if q.tried and o in q.tried %}checked{% endif %}> {{ o }}</label>{% endfor %}
+    {% elif q.options and q.options|length <= 8 %}
+      {% for o in q.options %}<label class="opt"><input type="radio" name="a_{{ i }}" value="{{ o }}" {% if q.tried and o in q.tried %}checked{% endif %}> {{ o }}</label>{% endfor %}
+    {% elif q.options %}
+      <select name="a_{{ i }}"><option value="">Choose…</option>{% for o in q.options %}<option {% if q.tried and o in q.tried %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
+    {% elif q.type == 'textarea' %}
+      <textarea name="a_{{ i }}" rows="4" style="width:100%">{{ q.tried[0] if q.tried else '' }}</textarea>
+    {% else %}
+      <input type="text" name="a_{{ i }}" value="{{ q.tried[0] if q.tried else '' }}" style="width:100%">
+    {% endif %}
+    {% if q.type != 'check' %}<label class="opt muted" style="font-size:13px;padding:4px 0 0"><input type="checkbox" name="remember_{{ i }}" value="1"> Remember this answer for future applications</label>{% endif %}
+  </div>
+  {% endfor %}
+  <button class="primary" style="margin-top:6px">Save answers</button>
+</form>
+<style>.needs .need { padding: 12px 0; border-bottom: 1px solid var(--divider); } .needs .need:last-of-type { border-bottom: none; } .needs label.opt { padding: 4px 0; }</style>
+{% endif %}
+
+{% if other_roles %}
+<h2>Other roles at {{ job.company }}</h2>
+<p class="muted" style="margin-top:-4px">One role per company in any 30 days: the best-scoring one is prepared and the rest are held. Compare them here; switch if you'd rather apply to a different one.</p>
+<div class="table-wrap"><table>
+  {% import "_cells.html" as cell with context %}
+  <tr>{{ cell.head('<th>Status</th><th></th>') }}</tr>
+  <tr style="background:var(--hover)">{{ cell.core(job, this_one=True) }}
+    <td><span class="pill {{ job.status }}">{{ job.status | label }}</span></td><td></td></tr>
+  {% for r in other_roles %}
+  <tr>{{ cell.core(r) }}
+    <td><span class="pill {{ r.status }}">{{ r.status | label }}</span></td>
+    <td></td></tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+
+{% if job.status == 'applied' %}
+<h2>Tracking</h2>
+<form method="post" action="/job/{{ job.id | q }}/track" class="panel">
+  <div class="bar">
+    <span class="muted">Applied {{ ((job.applied_at or job.updated_at) | et_date) }}</span>
+    <label>Stage
+      <select name="stage" style="font:inherit;padding:5px 8px;margin-left:6px">
+        {% for key, label in stages %}<option value="{{ key }}" {% if (job.track_stage or 'applied') == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></label>
+  </div>
+  <textarea name="notes" rows="4" placeholder="Notes: recruiter name, interview dates, follow-ups…"
+    style="width:100%;margin-top:10px;font:inherit;font-size:14px;padding:8px 10px">{{ job.track_notes or "" }}</textarea>
+  <div class="bar" style="margin-top:8px"><button class="primary">Save</button>{% if job.track_updated_at %}<span class="muted" style="font-size:13px">Last updated {{ (job.track_updated_at | et) }} UTC</span>{% endif %}</div>
+</form>
+{% endif %}
+
+{% if score %}
+<h2>Fit: <span class="score">{{ job.score }}</span>/100</h2>
+<div class="panel">
+  <p style="margin-top:0">{{ score.summary }}</p>
+  {% if score.parts %}
+  <div class="breakdown">
+    {% for key, name, cap in SCORE_PARTS %}{% set part = score.parts.get(key) %}{% if part %}
+    <details class="bd">
+      <summary><span class="bd-name">{{ name }}</span>
+        <span class="bd-bar"><i style="width:{{ (100 * part.points / cap) | round }}%" class="{{ 'lo' if part.points < cap * 0.6 else ('mid' if part.points < cap * 0.85 else 'hi') }}"></i></span>
+        <span class="bd-pts">{{ part.points }}<span class="muted">/{{ cap }}</span></span></summary>
+      <div class="bd-body">
+        <p class="muted" style="margin:4px 0 6px">{{ part.reason }}</p>
+        {% if key in ('required', 'preferred') %}
+        <ul class="tight">{% for r in score.requirements if r.kind == key %}
+          <li><span class="pill {{ 'applied' if r.status == 'met' else ('needs_manual' if r.status == 'partly' else 'failed') }}">{{ {'met': 'met', 'partly': 'partly', 'not_met': 'not shown'}[r.status] }}</span>
+            {{ r.text }} <span class="muted">· {{ r.evidence }}</span></li>
+        {% else %}<li class="muted">None listed in the posting.</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+    </details>
+    {% endif %}{% endfor %}
+    <p class="muted" style="font-size:13px;margin:6px 0 0">Claude rates each part; the total is added up from them.
+      {% if score.how %}This score: {{ score.how }}{% if score.scored_at %}, {{ score.scored_at | et }}{% endif %}.{% endif %}</p>
+  </div>
+  {% if score.history %}
+  <details style="margin-top:8px"><summary>Score history ({{ score.history | length }})</summary>
+    <ul class="tight">{% for h in score.history | reverse %}
+      <li><b>{{ h.score }}</b> <span class="muted">· {{ h.at | et }}{% if h.how %} · {{ h.how }}{% endif %}</span>
+        {% if h.parts %}<span class="muted" style="font-size:13px"> · {% for key, name, cap in SCORE_PARTS %}{% if key in h.parts %}{{ name.split(' ')[0] }} {{ h.parts[key] }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}</span>{% endif %}</li>
+    {% endfor %}</ul></details>
+  {% endif %}
+  <style>
+    .breakdown { margin: 4px 0 12px; } .bd { border-bottom: 1px solid var(--divider); }
+    .bd summary { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 64px; gap: 12px; align-items: center; padding: 7px 0; cursor: pointer; list-style: none; color: var(--text); }
+    .bd summary::-webkit-details-marker { display: none; }
+    .bd-name { font-weight: 600; } .bd-pts { font: 700 15px var(--head); text-align: right; }
+    .bd-bar { height: 10px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+    .bd-bar i { display: block; height: 100%; border-radius: 999px; }
+    .bd-bar i.hi { background: var(--lime); } .bd-bar i.mid { background: var(--sun); } .bd-bar i.lo { background: var(--red); }
+    .bd-body { padding: 0 0 10px; }
+  </style>
+  {% endif %}
+  {% if score.strengths %}<b>Strengths</b><ul class="tight">{% for s in score.strengths %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+  {% if score.gaps %}<b>Gaps</b>
+  <ul class="tight">{% for s in score.gaps %}<li>{{ s }}
+    <details class="gapfix" style="display:inline-block;margin-left:6px"><summary style="font-size:13px">I've done this</summary>
+      <form method="post" action="/job/{{ job.id | q }}/gap" style="margin:6px 0 10px">
+        <input type="hidden" name="gap" value="{{ s }}">
+        <textarea name="what" rows="3" required placeholder="What did you actually do? A sentence or two in your own words, e.g. 'At Acme I run A/B tests on marketing campaigns.'"
+          style="width:min(560px,100%);font:inherit;font-size:14px;padding:8px 10px"></textarea><br>
+        <button class="primary" style="margin-top:6px">Suggest wording</button>
+        <span class="muted" style="font-size:12px">You'll review the wording before anything is saved.</span>
+      </form></details></li>{% endfor %}</ul>
+  <p class="muted" style="font-size:13px;margin-bottom:0">Gaps are judged only from <a href="/profile">your profile</a>. If one is wrong, use "I've done this" to add what's missing, and this job is re-scored right away.</p>{% endif %}
+  {% if score.dealbreakers %}<b>Dealbreakers</b><ul class="tight">{% for s in score.dealbreakers %}<li>{{ s }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}
+
+{% for app in applications %}
+{% set a = app.row %}{% set art = app.art %}{% set ch = app.changes %}
+{% if loop.first %}
+<h2>{{ "What will be sent" if job.status == 'ready' else "Latest attempt" }}
+  <span class="muted" style="font-weight:normal;font-size:13px">· <span class="pill {{ a.outcome or '' }}">{{ {'dry_run': 'prepared', 'materials': 'materials ready'}.get(a.outcome or '', (a.outcome or 'running').replace('_', ' ')) }}</span> {{ (a.started_at | et) }}{% if art.claude_cost_usd %} · Claude ≈ ${{ '%.2f' % art.claude_cost_usd }}{% endif %}</span></h2>
+{% else %}
+<details class="panel" style="margin-top:12px"><summary>Earlier attempt · {{ (a.outcome or 'running').replace('_', ' ') }} · {{ (a.started_at | et) }}</summary>
+{% endif %}
+<div class="panel" {% if not loop.first %}style="border:none;padding:8px 0"{% endif %}>
+  {% if a.detail and a.outcome != 'dry_run' %}<p style="margin-top:0">{{ a.detail }}</p>{% endif %}
+  <div class="bar">
+    {% if art.resume %}<a class="button" href="/artifacts/{{ art.dir }}/{{ art.resume }}" target="_blank">Resume PDF</a>{% endif %}
+    {% if art.cover_letter %}<a class="button" href="/artifacts/{{ art.dir }}/{{ art.cover_letter }}" target="_blank">Cover letter PDF</a>{% endif %}
+    {% if art.drive_folder %}<a class="button" href="{{ art.drive_folder }}" target="_blank" rel="noopener">Drive folder ↗</a>{% endif %}
+    {% if a.outcome == 'applied' and not art.drive_folder %}<form class="inline" method="post" action="/job/{{ job.id | q }}/drive"><button title="{{ art.drive_error or 'Copy the resume, cover letter and answers to Google Drive' }}">{{ "Retry Drive copy" if art.drive_error else "Copy to Drive" }}</button></form>{% endif %}
+  </div>
+  {% if art.drive_error %}<p class="muted" style="font-size:13px">Drive copy failed: {{ art.drive_error }}</p>{% endif %}
+
+  {% if ch %}
+  <h3 style="font-size:15px;margin:16px 0 6px">Resume changes
+    <span class="muted" style="font-weight:normal;font-size:13px">· {{ ch.rewritten_count }} bullet{{ '' if ch.rewritten_count == 1 else 's' }} reworded · {{ ch.left_out_count }} left out</span></h3>
+  <div class="change"><span class="tag {{ 'new' if ch.summary_original else 'kept' }}">{{ "Summary reworded" if ch.summary_original else "Summary unchanged" }}</span>
+    <div>{{ ch.summary }}</div>
+    {% if ch.summary_original %}<div class="was">Your original: {{ ch.summary_original }}</div>{% endif %}</div>
+  {% for sec in ch.sections %}
+  <div class="change"><b>{{ sec.title }}{% if sec.title %} · {% endif %}{{ sec.name }}</b>
+    {% for it in sec["items"] %}
+    <div style="margin:6px 0 0 4px">
+      {% if it.reverted %}<span class="tag kept">kept original</span>{% elif it.original %}<span class="tag new">{{ "merged + reworded" if it.merged else "reworded" }}</span>{% else %}<span class="tag kept">as written</span>{% endif %}
+      {{ it.text }}
+      {% if it.original %}<div class="was">Your original: {{ it.original }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    {% if sec.left_out %}<details style="margin:6px 0 0 4px"><summary>{{ sec.left_out|length }} bullet{{ '' if sec.left_out|length == 1 else 's' }} left out</summary><ul class="tight">{% for b in sec.left_out %}<li class="muted">{{ b }}</li>{% endfor %}</ul></details>{% endif %}
+  </div>
+  {% endfor %}
+  {% if ch.projects_left_out %}<div class="change"><span class="tag">projects left out</span> {{ ch.projects_left_out|join(", ") }}</div>{% endif %}
+  <div class="change"><b>Skills</b>{% for g in ch.skills if g["items"] %}<div style="margin:4px 0 0 4px">{% if g.reordered %}<span class="tag new">reordered</span>{% endif %}<b>{{ g.name }}:</b> {{ g["items"]|join(", ") }}{% if g.dropped %} <span class="muted">(left out: {{ g.dropped|join(", ") }})</span>{% endif %}</div>{% endfor %}</div>
+  {% if art.tailoring_notes %}<details style="margin-top:8px"><summary>Fact-check notes ({{ art.tailoring_notes|length }})</summary><ul class="tight">{% for n in art.tailoring_notes %}<li>{{ n }}</li>{% endfor %}</ul></details>{% endif %}
+  {% endif %}
+
+  {% if app.cover_text %}
+  <h3 style="font-size:15px;margin:16px 0 6px">Cover letter</h3>
+  <div class="jd" style="max-height:none">{{ app.cover_text }}</div>
+  {% elif art.cover_letter_error %}<p class="muted">Cover letter: {{ art.cover_letter_error }}</p>{% endif %}
+
+  {% if app.answers %}
+  <h3 style="font-size:15px;margin:16px 0 6px">Form answers</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Question</th><th>Answer</th><th class="hide-sm">From</th></tr>
+    {% for ans in app.answers %}
+    <tr><td>{{ ans.label }}{% if ans.required %} <span class="muted">*</span>{% endif %}</td>
+      <td style="white-space:pre-wrap">{% if ans.source == 'unanswered' %}<span style="color:var(--warn)">needs you</span>{% else %}{{ ans.value }}{% endif %}</td>
+      <td class="hide-sm muted">{{ {'profile':'your profile','checked':'your profile ✓ double-checked','written':'Claude','job_posting':'posting','approved':'you approved','generated':'generated','consent':'auto-accepted'}.get(ans.source, ans.source) }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+
+  {% if art.screenshots %}
+  <h3 style="font-size:15px;margin:16px 0 6px">Screenshots</h3>
+  <div class="shots">{% for s in art.screenshots %}<a href="/artifacts/{{ art.dir }}/{{ s }}" target="_blank"><img src="/artifacts/{{ art.dir }}/{{ s }}" alt="{{ s }}" loading="lazy"></a>{% endfor %}</div>
+  {% endif %}
+  {% if a.log %}<details style="margin-top:10px"><summary>Technical log</summary><pre>{{ a.log }}</pre></details>{% endif %}
+</div>
+{% if not loop.first %}</details>{% endif %}
+{% endfor %}
+
+{% if events %}
+<h2>Timeline</h2>
+<div class="panel">
+  <div class="change"><span class="muted" style="font-size:13px">{{ (job.discovered_at | et) }}</span> &nbsp;Found on {{ job.ats }}{% if job.source == 'linkedin_alert' %} via a LinkedIn alert{% endif %}</div>
+  {% for e in events %}
+  <div class="change"><span class="muted" style="font-size:13px">{{ (e.at | et) }}</span> &nbsp;
+    {% if e.kind == 'drive' %}<span class="tag">drive</span> {{ e.detail }}{% if e.link %} · <a href="{{ e.link }}" target="_blank" rel="noopener">open ↗</a>{% endif %}
+    {% elif e.kind == 'email' %}<span class="tag new">email</span> {{ e.detail }}{% if e.link %} · <a href="{{ e.link }}" target="_blank" rel="noopener">open in Gmail ↗</a>{% endif %}
+    {% elif e.kind == 'stage' %}<span class="tag new">stage</span> {{ e.detail }}
+    {% elif e.kind == 'note' %}<span class="tag">note</span> Notes updated
+    {% elif e.kind == 'score' %}<span class="tag">scored</span> {{ e.detail.replace('scored ', '').replace('→', '·') }}
+    {% else %}<span class="tag">{{ e.detail.split(':', 1)[0].replace('_', ' ') }}</span> {{ e.detail.split(':', 1)[1] if ':' in e.detail else '' }}{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Job description <a href="{{ job.url or job.apply_url }}" target="_blank" rel="noopener" style="font-size:13px;font-weight:normal">open original ↗</a></h2>
+<div class="panel jd">{{ job.description or "No description stored for this job (it was filtered out before download). Use “Original posting” above." }}</div>
+{% endblock %}

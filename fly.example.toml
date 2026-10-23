@@ -1,0 +1,39 @@
+# Copy to fly.toml and pick your own app name (fly.toml stays out of git).
+# Fly app name (must be unique on Fly).
+app = "your-autoapply"
+primary_region = "ewr"
+
+[build]
+
+[env]
+  DATA_DIR = "/data"
+  PORT = "8080"
+  # Fewer malloc arenas: stops the worker threads from bloating memory use.
+  MALLOC_ARENA_MAX = "2"
+  # Shown on the /privacy page (Google's app review asks who runs the app).
+  OWNER_NAME = ""
+  CONTACT_EMAIL = ""
+
+[mounts]
+  source = "autoapply_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Must stay running: the scheduler lives in this process.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/healthz"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1

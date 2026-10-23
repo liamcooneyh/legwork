@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Settings · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if saved %}<div class="banner">Saved.</div>{% endif %}
+<form method="post" action="/settings" class="panel">
+  <h2 style="margin-top:4px">How applying works</h2>
+  <p class="muted" style="margin:4px 0 0">Each run finds and scores new jobs, then prepares a draft for the good fits: a tailored resume,
+    a cover letter if the form asks for one, and an answer to every question. Nothing is sent. Open a draft with
+    <i>Fill in Chrome</i>: the extension fills the form in your own Chrome and you press Submit.</p>
+
+  <h2>Limits</h2>
+  <label class="opt"><input type="number" name="max_per_day" min="0" max="200" value="{{ max_per_day }}">
+    <span>New drafts per day<br><span class="muted">In any 24 hours; a cap on Claude costs (about 10–15¢ a draft). Re-preparing a job you already have a draft for doesn't count.</span></span></label>
+  <label class="opt"><input type="number" name="min_score" min="0" max="100" value="{{ min_score }}">
+    <span>Minimum fit score (0–100)<br><span class="muted">Jobs Claude scores below this are skipped. Applies to newly scored jobs.</span></span></label>
+
+  <h2>Time saved</h2>
+  <label class="opt"><input type="number" name="manual_minutes" min="0" max="240" step="1" value="{{ '%g' % impact_cfg.manual }}">
+    <span>Minutes per application by hand<br><span class="muted">Finding and reading the posting, tailoring the resume, the cover letter, answers, and the form. Your time with the extension is measured and taken off.</span></span></label>
+  <label class="opt"><input type="number" name="screen_minutes" min="0" max="30" step="0.5" value="{{ '%g' % impact_cfg.screen }}">
+    <span>Minutes to read a posting<br><span class="muted">Credited for each posting Claude scored that you didn't apply to.</span></span></label>
+
+  <h2>Look</h2>
+  <label class="opt"><input type="checkbox" name="bg_motion" value="1" {% if bg_motion %}checked{% endif %}>
+    <span>Animate the background<br><span class="muted">A slow ASCII wave behind the pages, even with reduced motion on in your system. Off: a still pattern.</span></span></label>
+
+  <h2>Connections</h2>
+  <p style="margin:4px 0">Gmail (LinkedIn alerts + reply tracking): {% if mail_on %}<span class="pill applied">connected</span>{% else %}<span class="pill">not connected</span>{% endif %}</p>
+  <p style="margin:4px 0">Google Drive (copies of sent applications): {% if drive_on %}<span class="pill applied">connected</span>{% else %}<span class="pill">not connected</span> <span class="muted">see README → "Copies in Google Drive"</span>{% endif %}</p>
+  {% if drive_on %}<p style="margin:4px 0">Nightly backup of the database and your profile to Drive → Job Applications/_backups (last 14 kept):
+    {% if last_backup %}last {{ (last_backup[0] | et) }} · <a href="{{ last_backup[1] }}" target="_blank" rel="noopener">open ↗</a>{% else %}<span class="muted">none yet</span>{% endif %}
+    <button form="backup-now" style="margin-left:6px">Back up now</button></p>{% endif %}
+
+  <h2>Running</h2>
+  <label class="opt"><input type="checkbox" name="paused" value="1" {% if paused %}checked{% endif %}>
+    <span>Paused<br><span class="muted">Stops all searching and preparing until unchecked.</span></span></label>
+
+  <div class="bar" style="margin-top:12px"><button class="primary">Save</button>
+    <span class="muted">Job filters are on the <a href="/filters">Filters</a> page and the watched companies on <a href="/companies">Companies</a>. Your profile (resume facts, standard answers) is in <code>profile.yaml</code>; redeploy after editing it.</span></div>
+</form>
+<form id="backup-now" method="post" action="/backup"></form>
+{% endblock %}

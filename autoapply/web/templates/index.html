@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+  .hero { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+  .hero p { margin: 8px 0 0; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .runbox { margin-bottom: 24px; }
+  .runbox.is-running { border-color: var(--accent); box-shadow: 4px 4px 0 var(--pink-bg); }
+  .runhead { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .runhead .grow { flex: 1; }
+  .runhead b { font: 700 18px/1.3 var(--head); }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.6s infinite; margin-right: 6px; vertical-align: 1px; }
+  .steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 0; margin: 14px 0 14px; counter-reset: step; }
+  .steps li { counter-increment: step; font-size: 14px; font-weight: 500; padding: 3px 12px 3px 5px; border-radius: 999px;
+    color: var(--muted); background: transparent; border: 1px dashed var(--divider); display: inline-flex; align-items: center; gap: 7px; }
+  .steps li::before { content: counter(step); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--chip); color: var(--muted); font-size: 12px; font-weight: 700; }
+  .steps li.done { color: var(--lime); background: var(--lime-bg); border: 1px solid transparent; }
+  .steps li.done::before { content: "✓"; background: var(--lime); color: var(--lime-bg); }
+  .steps li.now { color: var(--text); background: var(--pink-bg); border: 1px solid var(--accent); font-weight: 600; }
+  .steps li.now::before { background: var(--accent); color: var(--panel); }
+  .meter { height: 14px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: 999px; transition: width .6s ease;
+    background: repeating-linear-gradient(45deg, var(--accent-fill) 0 10px, #ff9cc8 10px 20px); background-size: 28px 100%; animation: stripes 1.2s linear infinite; }
+  .meter.indeterminate i { width: 100% !important; opacity: .45; }
+  .runfoot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; margin-top: 10px; font-size: 14px; }
+  .runfoot .now-item { font-weight: 600; overflow-wrap: anywhere; }
+  .idle { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .idle .grow { flex: 1; min-width: 220px; }
+
+  .buddy { display: flex; align-items: center; gap: 12px; margin: -2px 0 14px; }
+  .buddy-bod { position: relative; flex: none; width: 60px; height: 60px; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
+  .buddy-bod:hover, .buddy-bod:active { background: none; box-shadow: none; transform: none; }
+  .buddy-bod svg { width: 60px; height: 60px; display: block; transform-origin: 50% 90%; overflow: visible; }
+  .b-body { fill: var(--accent-fill); stroke: var(--line); stroke-width: 2.4; }
+  .b-line { fill: none; stroke: var(--line); stroke-width: 2.4; stroke-linecap: round; }
+  .b-ink { fill: #23202a; } .b-shine { fill: #fff; } .b-cheek { fill: #ff4f9d; opacity: .45; }
+  .b-bulb { fill: #d9f59a; stroke: var(--line); stroke-width: 2; }
+  .b-eyes { transform-box: fill-box; transform-origin: center; animation: eyeblink 4.5s infinite; }
+  .b-closed { display: none; }
+  .b-arm-l, .b-arm-r { transform-box: fill-box; }
+  .b-arm-l { transform-origin: 100% 100%; } .b-arm-r { transform-origin: 0% 100%; }
+  .is-running .buddy-bod svg { animation: bob 1.1s ease-in-out infinite; }
+  .is-running .b-arm-l { animation: wave-l .55s ease-in-out infinite alternate; }
+  .is-running .b-arm-r { animation: wave-r .55s ease-in-out infinite alternate; }
+  .is-running .b-bulb { animation: bulb 1.1s ease-in-out infinite; }
+  .sleepy .b-eyes { display: none; } .sleepy .b-closed { display: inline; }
+  .sleepy .buddy-bod svg { animation: breathe 3.2s ease-in-out infinite; }
+  .zzz { display: none; position: absolute; right: -4px; top: -2px; font: 700 15px var(--head); color: var(--muted); }
+  .sleepy .zzz { display: block; animation: zzz 2.6s ease-in infinite; }
+  .buddy-bod.hop svg { animation: hop .45s ease-out !important; }
+  .buddy-bod.spin svg { animation: spin-hop .7s cubic-bezier(.3,1.4,.5,1) !important; }
+  .buddy-bod.party svg { animation: party .9s ease-in-out 2 !important; }
+  .b-look { transition: transform .35s ease; }
+  .b-mouth { fill: #23202a; display: none; transform-box: fill-box; transform-origin: center; }
+  .talking .b-smile { display: none; } .talking .b-mouth { display: inline; animation: talk .18s ease-in-out infinite alternate; }
+  .sleepy .b-mouth { display: none !important; }
+  .buddy:not(.sleepy) .buddy-bod svg { animation: idle-sway 3.6s ease-in-out infinite; }
+  .is-running .buddy:not(.sleepy) .buddy-bod svg { animation: bob 1.1s ease-in-out infinite; }
+  .confetti { position: absolute; left: 50%; top: 10px; width: 0; height: 0; pointer-events: none; }
+  .confetti i { position: absolute; width: 7px; height: 7px; border-radius: 2px; opacity: 0; animation: confetti 1.1s ease-out forwards; }
+  @keyframes idle-sway { 0%, 100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-1px); } }
+  @keyframes spin-hop { 0% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-18px) rotate(200deg); } 100% { transform: translateY(0) rotate(360deg); } }
+  @keyframes party { 0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-16px) scale(1.06, .94); } 60% { transform: translateY(0) scale(.94, 1.06); } }
+  @keyframes talk { from { transform: scaleY(.35); } to { transform: scaleY(1.1); } }
+  @keyframes confetti { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)); } }
+  /* Reduce motion is on: Pip stays alive, but gently (no hops, spins or confetti). */
+  @media (prefers-reduced-motion: reduce) {
+    .buddy-bod svg, .buddy-bod.hop svg, .buddy-bod.spin svg, .buddy-bod.party svg { animation: breathe 4s ease-in-out infinite !important; }
+    .b-eyes { animation: eyeblink 4.5s infinite !important; } .b-look { transition: transform .5s ease !important; }
+    .talking .b-mouth { animation: talk .3s ease-in-out infinite alternate !important; }
+    .confetti { display: none; }
+  }
+  .bubble { position: relative; margin: 0; padding: 8px 14px; border-radius: 14px; background: var(--hover); border: 1.5px solid var(--line);
+    font-weight: 500; max-width: 620px; }
+  .bubble::before { content: ""; position: absolute; left: -8px; top: 50%; width: 12px; height: 12px; margin-top: -6px; background: var(--hover);
+    border-left: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); transform: rotate(45deg); }
+  .bubble.pop { animation: pop .28s ease-out; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
+  @keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.03, .97); } }
+  @keyframes hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14px) rotate(-8deg); } 100% { transform: translateY(0); } }
+  @keyframes wave-l { from { transform: rotate(0deg); } to { transform: rotate(28deg); } }
+  @keyframes wave-r { from { transform: rotate(0deg); } to { transform: rotate(-28deg); } }
+  @keyframes bulb { 50% { fill: #ffd23f; } }
+  @keyframes eyeblink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  @keyframes zzz { 0% { opacity: 0; transform: translate(0, 4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(8px, -14px); } }
+  @keyframes pop { 0% { transform: scale(.94); opacity: .4; } 100% { transform: scale(1); opacity: 1; } }
+
+  .saved { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; margin: 0 0 18px; padding: 18px 22px;
+    color: var(--text); text-decoration: none !important; border-color: var(--accent); }
+  .saved:hover { background: var(--hover); }
+  .saved-main { display: flex; flex-direction: column; }
+  .saved-label { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .saved-main b { font: 700 56px/1 var(--head); font-variant-numeric: tabular-nums; color: var(--accent); }
+  .saved-main b small { font-size: 22px; color: var(--text); margin-left: 4px; }
+  .saved-parts { display: flex; flex-direction: column; gap: 4px; font-size: 15px; font-weight: 500; flex: 1 1 320px; }
+  .saved-parts b { font-variant-numeric: tabular-nums; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
+  .sw.apps { background: var(--series-apps); } .sw.screen { background: var(--series-screen); }
+  .moves { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 8px; }
+  .move { display: flex; flex-direction: column; gap: 2px; padding: 14px 18px 13px; border: 1.5px solid var(--line); border-radius: var(--radius);
+    box-shadow: 4px 4px 0 var(--shadow); color: var(--text); text-decoration: none; transition: transform .12s, box-shadow .12s; }
+  .move:hover { text-decoration: none; transform: translate(-2px, -2px) rotate(-.5deg); box-shadow: 6px 6px 0 var(--shadow); }
+  .move b { font: 700 36px/1.05 var(--head); font-variant-numeric: tabular-nums; }
+  .move span { font-weight: 700; font-size: 16px; }
+  .move small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .move.sky { background: var(--sky-bg); } .move.sky b { color: var(--sky); }
+  .move.sun { background: var(--sun-bg); } .move.sun b { color: var(--sun); }
+  .move.orange { background: var(--orange-bg); } .move.orange b { color: var(--orange); }
+  .move.lime { background: var(--lime-bg); } .move.lime b { color: var(--lime); }
+  .move.zero { background: var(--panel); border-style: dashed; border-color: var(--divider); box-shadow: none; }
+  .move.zero b { color: var(--muted); }
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+  .flow a { flex: 1 1 120px; display: block; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); box-shadow: 3px 3px 0 var(--shadow); }
+  .flow a:hover { text-decoration: none; background: var(--hover); }
+  .flow a b { display: block; font: 700 23px/1.2 var(--head); font-variant-numeric: tabular-nums; }
+  .flow a span { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .flow .arrow { align-self: center; font-size: 18px; color: var(--muted); }
+  .aside { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); align-items: center; }
+  .aside a { color: var(--muted); font-weight: 500; } .aside a b { color: var(--text); font-weight: 700; }
+  @media (max-width: 640px) { .flow .arrow { display: none; } .flow a { flex-basis: 40%; } .move b { font-size: 30px; } }
+</style>
+{% endblock %}
+{% block content %}
+{% import "_cells.html" as cell with context %}
+{% macro n(x) %}{{ '{:,}'.format(x or 0) }}{% endmacro %}
+{% macro link(s) %}{{ '/applications' if s == 'applied' else ('/filtered?tab=screen' if s == 'screened_out' else ('/filtered?tab=filters' if s == 'filtered_out' else ('/filtered?tab=poor_fit' if s == 'rejected' else ('/linkedin' if s == 'manual_linkedin' else '/jobs?status=' ~ s)))) }}{% endmacro %}
+
+<div class="hero">
+  <div>
+    <h1>Overview</h1>
+    <p class="muted">Watching <b>{{ n(board_count) }}</b> company boards plus your LinkedIn alerts, every {{ cfg.schedule.interval_hours|round(1) }}h · <span title="Jobs drafted for the first time; re-prepares don't count">{{ drafts_24h }} new drafts in the last 24h (limit {{ max_per_day }}/day)</span> · {{ submitted_24h }} applied</p>
+  </div>
+  <div class="controls">
+    {% if paused %}<span class="pill paused">Paused</span>{% endif %}
+
+    <form class="inline" method="post" action="/toggle"><input type="hidden" name="name" value="paused"><button>{{ "Resume" if paused else "Pause" }}</button></form>
+    <a class="button" href="/settings">Settings</a>
+    <form class="inline" method="post" action="/notify-test"><button class="quiet" title="Send a test notification to your phone">Test ping</button></form>
+  </div>
+</div>
+
+{% set im = impact %}
+<a class="saved panel" href="/impact" title="How this is worked out: see the Impact page">
+  <div class="saved-main"><span class="saved-label">Time saved</span>
+    <b>{{ '%.1f' % im.hours }}<small> hours</small></b></div>
+  <div class="saved-parts">
+    <span><i class="sw apps"></i><b>{{ '%.1f' % im.apps_hours }} h</b> from {{ im.applied }} application{{ '' if im.applied == 1 else 's' }}{% if im.median_minutes %}, about {{ '%.0f' % im.median_minutes }} min of yours each instead of {{ '%.0f' % im.settings.manual }}{% endif %}</span>
+    <span><i class="sw screen"></i><b>{{ '%.1f' % im.screen_hours }} h</b> from {{ n(im.screened) }} postings read and scored for you</span>
+    <span class="muted">{{ '%.1f' % im.week_hours }} h in the last 7 days · See your impact →</span>
+  </div>
+</a>
+
+{% set last = runs[0] if runs else None %}
+<section id="runbox" class="panel runbox{% if running %} is-running{% endif %}">
+  <div class="buddy{% if not running %} sleepy{% endif %}" id="buddy"
+       data-matched="{{ counts.get('matched', 0) }}" data-ready="{{ counts.get('ready', 0) }}"
+       data-next="{{ next_run | et_time if next_run else '' }}" data-error="{{ '1' if last and last.error else '' }}"
+       data-finished="{{ last.finished_at if last and last.finished_at else '' }}">
+    <button class="buddy-bod" id="buddy-bod" type="button" title="Pip, your job-hunt buddy (click me)" aria-label="Pip says something new">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <line x1="32" y1="12" x2="32" y2="5" class="b-line"/><circle cx="32" cy="5" r="3.6" class="b-bulb"/>
+        <path d="M10 38c0-15 9.5-25 22-25s22 10 22 25c0 12-9 19-22 19S10 50 10 38z" class="b-body"/>
+        <path d="M11 40 4 34" class="b-line b-arm-l"/><path d="M53 40l7-6" class="b-line b-arm-r"/>
+        <g class="b-eyes"><g class="b-look"><ellipse cx="24" cy="35" rx="3.2" ry="4.2" class="b-ink"/><ellipse cx="40" cy="35" rx="3.2" ry="4.2" class="b-ink"/>
+          <circle cx="25.2" cy="33.4" r="1.1" class="b-shine"/><circle cx="41.2" cy="33.4" r="1.1" class="b-shine"/></g></g>
+        <g class="b-closed"><path d="M20.5 35.5q3.5 2.6 7 0" class="b-line"/><path d="M36.5 35.5q3.5 2.6 7 0" class="b-line"/></g>
+        <circle cx="18.5" cy="42" r="3" class="b-cheek"/><circle cx="45.5" cy="42" r="3" class="b-cheek"/>
+        <path d="M27 43.5q5 4.5 10 0" class="b-line b-smile"/>
+        <ellipse cx="32" cy="45" rx="3.4" ry="2.6" class="b-mouth"/>
+      </svg>
+      <span class="zzz" aria-hidden="true">z</span>
+      <span class="confetti" aria-hidden="true"></span>
+    </button>
+    <p class="bubble" id="buddy-say" aria-live="polite">…</p>
+  </div>
+{% if running %}
+  <div class="runhead">
+    <span class="pill live"><span class="live-dot"></span>Running</span>
+    <b id="run-step">Starting…</b>
+    <span class="grow"></span>
+    <span class="muted" id="run-elapsed" style="font-variant-numeric:tabular-nums"></span>
+    <span class="pill" id="run-cost" title="Claude API spend so far this run" hidden></span>
+  </div>
+  <ol class="steps" id="run-steps">{% for key, label in run_steps %}<li data-key="{{ key }}">{{ label }}</li>{% endfor %}</ol>
+  <div class="meter indeterminate" id="run-meter"><i></i></div>
+  <div class="runfoot"><span class="now-item" id="run-current"></span><span class="muted" id="run-count" style="font-variant-numeric:tabular-nums"></span></div>
+{% else %}
+  <div class="idle">
+    <span class="pill">Idle</span>
+    <div class="grow">
+      {% if last %}Last run <b data-ago="{{ last.finished_at or last.started_at }}">{{ ((last.finished_at or last.started_at) | et) }}</b>{% if last.error %} · <span style="color:var(--bad)">{{ last.error[:120] }}</span>{% endif %}{% else %}No runs yet.{% endif %}
+      {% if next_run %}<span class="muted"> · next one at {{ next_run | et_time }}</span>{% endif %}
+      {% if counts.get('matched') %}<br><span class="muted">{{ counts.get('matched') }} matches are queued and get prepared on the next run.</span>{% endif %}
+    </div>
+    <form class="inline" method="post" action="/run"><button class="primary">▶ Run now</button></form>
+  </div>
+{% endif %}
+</section>
+
+<div class="moves">
+  {% for s, label, hint, color in [('ready', 'Ready to fill', 'Open in Chrome', 'sky'), ('needs_manual', 'Needs you', 'Answer a question or two', 'sun'), ('manual_linkedin', 'LinkedIn: apply yourself', 'Best fits first', 'orange'), ('applied', 'Applied', 'Track replies', 'lime')] %}
+  {% set c = counts.get(s, 0) %}
+  <a class="move {{ color }}{% if not c %} zero{% endif %}" href="{{ link(s) }}"><b>{{ n(c) }}</b><span>{{ label }}</span><small>{{ hint }} →</small></a>
+  {% endfor %}
+</div>
+
+<h2>Pipeline</h2>
+<div class="flow">
+  {% for s, label in [('screen', 'Title screen'), ('prefiltered', 'Waiting to score'), ('matched', 'Matched, queued'), ('ready', 'Prepared'), ('applied', 'Applied')] %}
+  {% if not loop.first %}<span class="arrow">→</span>{% endif %}
+  <a href="{{ link(s) }}"><b>{{ n(counts.get(s, 0)) }}</b><span>{{ label }}</span></a>
+  {% endfor %}
+</div>
+<div class="aside">Set aside:
+  {% for s, label in [('held', 'held: same company'), ('rejected', 'poor fit'), ('screened_out', 'dropped by title screen'), ('filtered_out', 'filtered out'), ('failed', 'failed'), ('skipped', 'skipped')] %}
+  <a href="{{ link(s) }}"><b>{{ n(counts.get(s, 0)) }}</b> {{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if ready or submitting %}
+<h2>Ready to fill ({{ ready|length }}) {% include "_remote_toggle.html" %}</h2>
+<p class="muted">Prepared, not sent. <i>Fill in Chrome</i> opens the form and the extension fills it; look it over and press Submit. Click a title to see the resume, cover letter, and answers first.</p>
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th></th>') }}</tr>
+  {% for j in submitting %}
+  <tr>{{ cell.core(j) }}<td><span class="pill submitting">submitting…</span></td></tr>
+  {% endfor %}
+  {% for j in ready %}
+  <tr data-remote="{{ 1 if j | remote else 0 }}">
+    {{ cell.core(j) }}
+    <td class="act"><div class="rowacts">
+      {% set fu = j | fill_url %}{% if fu %}<a class="button primary" href="{{ fu }}" target="_blank" rel="noopener" title="Opens the form; the extension fills it and you press Submit">Fill in Chrome ↗</a>{% else %}<a class="button primary" href="/job/{{ j.id | q }}">Open</a>{% endif %}
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="applied_myself"><input type="hidden" name="back" value="home"><button title="You already submitted this one">Mark applied</button></form>
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="skip"><input type="hidden" name="back" value="home"><button class="quiet">Skip</button></form>
+    </div></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+
+{% if needs_manual %}
+<h2>Needs you</h2>
+<p class="muted">Stopped before submitting, usually on a question or two your profile doesn't answer. Open one and answer them there; it then moves to Ready. Only a CAPTCHA has to be finished on the company's site.</p>
+{% set rows = needs_manual %}{% set row_actions = 'needs' %}{% include "_jobrows.html" %}{% set row_actions = None %}
+{% endif %}
+
+{% if manual_linkedin %}
+{% set li_total = counts.get('manual_linkedin', 0) %}
+<h2>Found on LinkedIn — apply yourself</h2>
+<p class="muted">From your LinkedIn job alerts, but not on a Greenhouse, Lever, or Ashby board this tool can submit to. Look them up and score them on the <a href="/linkedin">LinkedIn page</a>. Best fits first{% if li_total > manual_linkedin|length %} · showing {{ manual_linkedin|length }} of {{ li_total }} · <a href="/linkedin">see all</a>{% endif %}.</p>
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th>Status</th><th></th>') }}</tr>
+  {% for j in manual_linkedin %}
+  <tr data-remote="{{ 1 if j | remote else 0 }}">
+    {{ cell.core(j) }}
+    <td class="muted" style="font-size:13px">{{ j.status_reason or "" }}</td>
+    <td class="act"><div class="rowacts">
+      <a class="button" href="{{ j.linkedin_url or j.apply_url }}" target="_blank" rel="noopener">LinkedIn ↗</a>
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="applied_myself"><button>Applied</button></form>
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="skip"><button class="quiet">Skip</button></form>
+    </div></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+
+{% if replies %}
+<h2>Latest replies from companies</h2>
+<div class="table-wrap"><table>
+  {% for e in replies %}
+  <tr><td style="white-space:nowrap" class="muted">{{ e.at | et_date }}</td>
+    <td><a href="/job/{{ e.job_id | q }}">{{ e.company }}</a> <span class="muted">· {{ e.title[:50] }}</span><br>{{ e.detail }}</td>
+    <td>{% if e.link %}<a href="{{ e.link }}" target="_blank" rel="noopener">Gmail ↗</a>{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+
+<h2>Recent activity</h2>
+<div class="table-wrap"><table>
+  <tr><th>Job</th><th>Outcome</th><th class="hide-sm">When</th></tr>
+  {% for a in recent %}
+  <tr>
+    <td><a href="/job/{{ a.job_id | q }}">{{ a.title }}</a><br><span class="muted">{{ a.company }} · score {{ a.score if a.score is not none else "–" }}</span></td>
+    <td><span class="pill {{ a.outcome or '' }}">{{ {'dry_run': 'prepared', 'materials': 'materials ready'}.get(a.outcome or '', (a.outcome or 'running').replace('_', ' ')) }}</span><br><span class="muted" style="font-size:12px">{{ (a.detail or '')[:160] }}</span></td>
+    <td class="hide-sm muted" data-sort="{{ a.started_at }}">{{ (a.started_at | et) }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3" class="muted">No applications yet.</td></tr>
+  {% endfor %}
+</table></div>
+
+<h2>Last runs</h2>
+<div class="table-wrap"><table>
+  <tr><th>Started</th><th>Summary</th></tr>
+  {% for r in runs %}
+  {% set s = r.stats_json | fromjson %}
+  <tr>
+    <td class="muted" style="white-space:nowrap">{{ (r.started_at | et) }}</td>
+    <td style="font-size:13px">
+      {% if r.error %}<span style="color:var(--bad)">{{ r.error }}</span><br>{% endif %}
+      {% if s %}
+        {% if s.paused %}Paused.{% endif %}
+        {% if s.discover %}{{ s.discover.new_jobs }} new jobs from {{ s.discover.boards }} boards{% if s.discover.board_errors %} ({{ s.discover.board_errors|length }} board errors){% endif %}.
+          {% if s.discover.linkedin and s.discover.linkedin.alert_jobs is defined %}LinkedIn alerts: {{ s.discover.linkedin.matched }} matched, {{ s.discover.linkedin.manual }} manual.{% elif s.discover.linkedin %}LinkedIn: {{ s.discover.linkedin.skipped or s.discover.linkedin.error }}.{% endif %}{% endif %}
+        {% if s.score %}{% if s.score.skipped %}Scoring skipped: {{ s.score.skipped }}.{% else %}Scored {{ s.score.matched + s.score.rejected }} ({{ s.score.matched }} matched).{% endif %}{% endif %}
+        {% if s.apply %}Drafts: {% for k, v in s.apply.items() %}{{ k.replace('_',' ') }} {{ v }}{% if not loop.last %}, {% endif %}{% else %}nothing queued{% endfor %}.{% endif %}
+      {% elif not r.finished_at %}Running…{% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="2" class="muted">No runs yet. Press “Run now”.</td></tr>
+  {% endfor %}
+</table></div>
+
+<script>
+(function () {
+  var STEPS = {{ run_steps | tojson }};
+  var UNITS = {discover: 'boards', screen: 'titles', enrich: 'jobs', score: 'jobs', apply: 'applications'};
+  var running = {{ 'true' if running else 'false' }};
+  var startedAt = null;
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Number(n || 0).toLocaleString(); }
+  function dur(ms) { var s = Math.max(0, Math.floor(ms / 1000)), m = Math.floor(s / 60), h = Math.floor(m / 60);
+    return h ? h + 'h ' + (m % 60) + 'm' : m + 'm ' + String(s % 60).padStart(2, '0') + 's'; }
+  function ago(iso) { var m = Math.round((Date.now() - new Date(iso)) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; }
+  document.querySelectorAll('[data-ago]').forEach(function (el) { el.textContent = ago(el.dataset.ago); el.title = el.dataset.ago; });
+  function render(p) {
+    if (!running || !$('run-step')) return;
+    if (p.started_at) startedAt = new Date(p.started_at);
+    var idx = STEPS.findIndex(function (s) { return s[0] === p.step; });
+    $('run-step').textContent = idx >= 0 ? STEPS[idx][1] : 'Starting…';
+    document.querySelectorAll('#run-steps li').forEach(function (li, i) {
+      li.className = idx < 0 ? '' : i < idx ? 'done' : i === idx ? 'now' : '';
+    });
+    var meter = $('run-meter'), has = p.total > 0;
+    meter.classList.toggle('indeterminate', !has);
+    meter.firstElementChild.style.width = has ? Math.min(100, 100 * p.done / p.total).toFixed(1) + '%' : '0';
+    $('run-count').textContent = has ? fmt(p.done) + ' / ' + fmt(p.total) + ' ' + (UNITS[p.step] || '') + ' · ' + Math.floor(100 * p.done / p.total) + '%' : '';
+    $('run-current').textContent = p.current ? (p.step === 'discover' ? 'Last board: ' : 'Now: ') + p.current : '';
+    var cost = $('run-cost');
+    if (p.cost_usd != null) { cost.hidden = false; cost.textContent = 'Claude $' + p.cost_usd.toFixed(2); }
+  }
+  function tick() { if (startedAt && $('run-elapsed')) $('run-elapsed').textContent = dur(Date.now() - startedAt); }
+  function poll() {
+    fetch('/progress', {credentials: 'same-origin', cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (p) {
+      if (p.running !== running) { location.reload(); return; }  // a run started or finished
+      render(p);
+    }).catch(function () {}).finally(function () { setTimeout(poll, running ? 2500 : 20000); });
+  }
+  // Pip: preset, context-aware cheering ({company}, {done}, {total}, {pct}, {left} are filled in).
+  var LINES = {
+    discover: ["Knocking on {total} company doors…", "Board {done} of {total}. Somebody's hiring, I can feel it.",
+               "Peeking at {company}'s job board…", "Speed-checking boards. Gotta go fast.", "So many companies. So little time."],
+    linkedin: ["Reading your LinkedIn alerts so you don't have to.", "Sorting through the inbox. You get a lot of mail!",
+               "LinkedIn sent jobs. I'm sending vibes."],
+    filter: ["Tossing anything in the wrong city.", "No, you don't want to be a Senior Dental Hygienist. Next!",
+             "Remote, NYC, Boston. Everything else: bye."],
+    screen: ["Speed-reading job titles… {done} down!", "Sorting the 'heck yes' from the 'heck no'.",
+             "Titles, titles, titles. Some of these are wild.", "{pct}% through the title pile."],
+    linkedin_free: ["Checking LinkedIn jobs on company job boards. Free, my favorite price.", "Spotting recruiter reposts so you don't pay for them.",
+                    "Hunting down the real employers behind your LinkedIn alerts."],
+    score: ["Reading the fine print so you can relax.", "{done} scored. Hunting for the really good ones.",
+            "Grading jobs on how much they'd be lucky to have you.", "Ooh, this one wants SQL people.",
+            "{left} left to read. I'm a fast reader.", "Required vs. nice-to-have: I know the difference."],
+    apply: ["Polishing your resume for {company}…", "{company} is gonna love you.", "Filling out {company}'s form. Neat handwriting, too.",
+            "Application {done} of {total}. You're on a roll.", "Writing a cover letter that doesn't say 'synergy'.",
+            "Tailoring, not fabricating. Only the real you.", "Nearly there. {left} to go!"],
+    start: ["Stretching… okay, let's find you a job!", "Here we go!"],
+    any: ["You've got this.", "Go grab some water, I've got it from here.", "Job hunting is a lot. You're not doing it alone.",
+          "Beep boop. Productivity!", "Fun fact: I never get tired of this."],
+    idle: ["Zzz… press Run now and I'll get to work.", "Recharging. Next run at {next}.", "Taking a little nap between runs.",
+           "Dreaming of 90+ fit scores…"],
+    idleMatched: ["{matched} matches are waiting. Hit Run now and I'll get them ready!", "Psst: {matched} good jobs are queued up."],
+    idleReady: ["{ready} drafts are ready to fill in Chrome!", "Your drafts are waiting. Go fill a few!"],
+    justDone: ["That's a wrap! Look what I found.", "Done! Go see what's ready for you.", "Whew. Run complete. High five!"],
+    oops: ["Last run hit a snag. Not my finest moment, but nothing's lost.", "Something went sideways last time. Let's try again!"]
+  };
+  var buddy = $('buddy'), say = $('buddy-say'), bod = $('buddy-bod');
+  var last = {step: null, line: '', at: 0, p: {}};
+  function fill(t, p) {
+    var company = (p.current || '').split(' — ')[0];
+    var left = p.total ? Math.max(0, p.total - (p.done || 0)) : '';
+    var vals = {company: company || 'this one', done: fmt(p.done), total: fmt(p.total), left: fmt(left),
+                pct: p.total ? Math.floor(100 * (p.done || 0) / p.total) : 0,
+                matched: buddy.dataset.matched, ready: buddy.dataset.ready, next: buddy.dataset.next || 'soon'};
+    return t.replace(/\{(\w+)\}/g, function (_, k) { return vals[k]; });
+  }
+  function pick(list) {
+    var options = list.filter(function (l) { return l !== last.line; });
+    return options[Math.floor(Math.random() * options.length)] || list[0];
+  }
+  var look = buddy ? buddy.querySelector('.b-look') : null, talkTimer = null;
+  function lookAt(dx, dy) { if (look) look.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)'; }
+  function speak(line) {
+    last.line = line; say.textContent = line; say.classList.remove('pop'); void say.offsetWidth; say.classList.add('pop'); last.at = Date.now();
+    if (buddy && !buddy.classList.contains('sleepy')) {   // mouth moves while the line "plays"
+      buddy.classList.add('talking'); clearTimeout(talkTimer);
+      talkTimer = setTimeout(function () { buddy.classList.remove('talking'); }, Math.min(2600, 500 + line.length * 28));
+    }
+  }
+  function confetti() {
+    var holder = buddy && buddy.querySelector('.confetti'); if (!holder) return;
+    var colors = ['#ff7ab6', '#d9f59a', '#82cfff', '#ffd23f', '#bba6ff'];
+    holder.innerHTML = '';
+    for (var i = 0; i < 18; i++) {
+      var c = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
+      c.style.background = colors[i % colors.length];
+      c.style.setProperty('--dx', (Math.cos(a) * d).toFixed(0) + 'px'); c.style.setProperty('--dy', (Math.sin(a) * d - 20).toFixed(0) + 'px');
+      c.style.setProperty('--r', (Math.random() * 540).toFixed(0) + 'deg'); c.style.animationDelay = (Math.random() * 0.15).toFixed(2) + 's';
+      holder.appendChild(c);
+    }
+  }
+  function celebrate() { if (!bod) return; bod.classList.remove('party'); void bod.offsetWidth; bod.classList.add('party'); confetti(); }
+  // Eyes follow the cursor when it's near, and glance around on their own otherwise.
+  var lastMove = 0;
+  document.addEventListener('mousemove', function (e) {
+    if (!bod || buddy.classList.contains('sleepy')) return;
+    var r = bod.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var dx = e.clientX - cx, dy = e.clientY - cy, dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    if (dist > 700) return;
+    lastMove = Date.now(); lookAt(2.2 * dx / dist, 1.6 * dy / dist);
+  });
+  setInterval(function () {
+    if (!buddy || buddy.classList.contains('sleepy') || Date.now() - lastMove < 3000) return;
+    var spots = [[0, 0], [-2, 0], [2, 0], [1.5, -1.2], [-1.5, 1], [0, 1.4]];
+    var s = spots[Math.floor(Math.random() * spots.length)]; lookAt(s[0], s[1]);
+  }, 2200);
+  function idleLine() {
+    var d = buddy.dataset, fin = d.finished ? Date.now() - new Date(d.finished) : Infinity;
+    if (d.error) return pick(LINES.oops);
+    if (fin < 15 * 60000) return pick(LINES.justDone);
+    if (+d.ready) return fill(pick(LINES.idleReady), {});
+    if (+d.matched) return fill(pick(LINES.idleMatched), {});
+    return fill(pick(LINES.idle), {});
+  }
+  function runLine(p) {
+    var list = LINES[p.step] || LINES.start;
+    if (p.step === 'discover' || p.step === 'apply') list = list.filter(function (l) { return l.indexOf('{company}') < 0 || p.current; });
+    if (!p.total) list = list.filter(function (l) { return !/\{(done|total|left|pct)\}/.test(l); });
+    if (Math.random() < 0.18) list = LINES.any;
+    return fill(pick(list.length ? list : LINES.any), p);
+  }
+  function cheer(p, force) {
+    if (!buddy) return;
+    if (!running) { if (force || Date.now() - last.at > 12000) speak(idleLine()); return; }
+    last.p = p || last.p;
+    var changed = last.p.step !== last.step;
+    if (force || changed || Date.now() - last.at > 8000) { last.step = last.p.step; speak(runLine(last.p)); }
+  }
+  var clicks = 0;
+  if (bod) bod.addEventListener('click', function () {
+    clicks++;
+    var move = clicks % 3 === 0 ? 'spin' : 'hop';   // every third click: a spin-hop
+    bod.classList.remove('hop', 'spin'); void bod.offsetWidth; bod.classList.add(move);
+    if (move === 'spin') confetti();
+    cheer(last.p, true);
+  });
+  var baseRender = render;
+  render = function (p) { baseRender(p); cheer(p); };
+  setInterval(function () { cheer(null); }, 4000);
+  cheer({{ live | tojson }}, true);
+  // A run that just finished gets a little party.
+  (function () { var f = buddy && buddy.dataset.finished; if (!running && f && Date.now() - new Date(f) < 15 * 60000 && !buddy.dataset.error) setTimeout(celebrate, 600); })();
+  render({{ live | tojson }});
+  setInterval(tick, 1000); tick();
+  setTimeout(poll, running ? 1500 : 20000);
+})();
+</script>
+{% endblock %}

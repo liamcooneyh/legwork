@@ -1,0 +1,211 @@
+# Example settings: copy to config.yaml and edit. config.yaml is yours and stays out of git.
+# What to look for and how aggressively to apply. Redeploy after editing
+# (dry run, pause, and run-now can also be toggled from the dashboard).
+
+search:
+  # Company job boards to watch. The token is the slug in the board URL:
+  #   job-boards.greenhouse.io/<token>   jobs.lever.co/<token>   jobs.ashbyhq.com/<token>
+  # Run `autoapply check-boards` to confirm each one resolves.
+  boards:
+    greenhouse: [datadog, squarespace, figma, robinhood, discord, gitlab, mongodb, peloton,
+                 betterment, oscar, seatgeek, flatironhealth, stripe, airbnb, dropbox, lyft,
+                 justworks, brex, airtable]
+    lever: [palantir, spotify, outreach]
+    ashby: [ramp, notion, linear, vanta, hex, replit, modal, cohere, openai]
+
+  # 'Always consider' titles skip the AI title screen and are always scored. Every other
+  # title in a wanted location goes through the AI title screen, which keeps anything
+  # plausibly relevant, so this list doesn't need to be complete.
+  title_include:
+    # Data engineering / analytics
+    - data engineer
+    - data engineering
+    - analytics engineer
+    - analytics engineering
+    - data analyst
+    - data analytics
+    - analytics
+    - business analyst
+    - product analyst
+    - operations analyst
+    - marketing analyst
+    - business intelligence
+    - BI
+    - BI developer
+    - BI engineer
+    - reporting
+    - insights
+    - data operations
+    - data platform
+    - data solutions
+    - data integration
+    - data warehouse
+    - data modeler
+    - data architect
+    - data consultant
+    - data specialist
+    - ETL
+    - integration engineer
+    - integrations
+    # GTM / RevOps / business systems
+    - revenue operations
+    - revops
+    - revenue systems
+    - revenue analyst
+    - GTM operations
+    - GTM engineer
+    - GTM systems
+    - GTM analyst
+    - GTM technology
+    - go-to-market operations
+    - go-to-market systems
+    - sales operations
+    - sales ops
+    - sales systems
+    - sales strategy
+    - marketing operations
+    - business operations
+    - bizops
+    - business systems
+    - business applications
+    - enterprise applications
+    - systems analyst
+    - CRM
+    - salesforce
+    - hubspot
+    - CPQ
+    - deal desk
+    - workflow automation
+    - business automation
+    # Solutions / sales engineering / technical customer-facing
+    - solutions engineer
+    - solutions engineering
+    - sales engineer
+    - sales engineering
+    - solutions consultant
+    - solutions architect
+    - solution engineer
+    - solution architect
+    - solution consultant
+    - pre-sales
+    - presales
+    - technical solutions
+    - technical consultant
+    - implementation engineer
+    - implementation consultant
+    - implementation specialist
+    - customer engineer
+    - deployment engineer
+    - forward deployed
+    - value engineer
+    - partner solutions
+    - product operations
+    - strategy and operations
+    - strategy & operations
+    - automation engineer
+    - internal tools
+    - applied AI
+    - AI automation
+    - growth analyst
+    - marketing analytics
+    - technical account manager
+    - AI solutions
+    - AI deployment
+  # Titles containing any of these are dropped before any AI sees them (certain non-fits only).
+  title_exclude:
+    - intern
+    - internship
+    - staff
+    - principal
+    - director
+    - head of
+    - vp
+    - vice president
+    - scientist
+    - machine learning
+    - security
+    - recruiter
+    - new grad
+    - program manager
+    - product manager
+    - payroll
+    - compensation
+    - financial analyst
+    - finance
+    - talent
+    - accountant
+    - legal
+    - hardware
+    - frontend
+    - front-end
+    - backend
+    - back-end
+    - full stack
+    - fullstack
+    - iOS
+    - android
+    - mobile engineer
+    - site reliability
+    - SRE
+    - sourcer
+    - IT support
+    - support specialist
+    - care specialist
+    - customer support
+    - nurse
+    - physician
+    - clinical
+    - designer
+    - copywriter
+    - account executive
+    - business development representative
+    - sales development representative
+    - BDR
+    - SDR
+
+  # Wanted locations (whole-word, case-insensitive match against the job's location text).
+  locations: ["New York", "NYC", "New York City", "Brooklyn", "NY", "Boston", "Cambridge", "MA"]
+  # Remote jobs pass unless their location names one of location_exclude.
+  allow_remote: true
+  location_exclude: [Europe, EMEA, UK, United Kingdom, London, Ireland, Germany, France, Spain,
+                     Netherlands, Poland, India, APAC, Asia, Japan, Singapore, Australia,
+                     Canada, Brazil, LATAM, Mexico, Israel]
+  exclude_companies: []      # e.g. your current and recent employers
+  max_age_days: 30
+
+  # Free-text preferences Claude weighs when scoring fit. Write it the way you'd brief a recruiter:
+  # the kinds of roles you want, the ones you don't, level, location, and pay.
+  preferences: |
+    Target roles, at roughly the 3–6 years of experience level:
+      1. Data & analytics: data engineering, analytics engineering, BI, data analyst.
+      2. Business systems and operations: revenue/marketing operations, business systems analyst, CRM admin.
+      3. Technical customer-facing: solutions engineering, implementation, technical consultant.
+    Not a fit: heavy software engineering, ML research, pure product management, people-manager roles,
+    quota-carrying sales, or 8+ years of experience.
+    Individual-contributor roles. Remote (US) is preferred; hybrid in New York City is also fine.
+    Target base salary $100k–$130k; a posted range far below that is a negative, and no salary is neutral.
+matching:
+  min_score: 70              # 0–100 fit score needed to apply
+  max_scored_per_cycle: 2000 # cap on scoring calls per run (Haiku: well under 1 cent each)
+
+apply:
+  mode: approve              # drafts only: the Chrome extension fills each form in your browser and you submit
+  max_per_day: 15            # new drafts per rolling 24h (the dashboard's Settings page overrides this)
+  max_per_company: 2         # submissions per company within company_window_days
+  company_window_days: 30
+  delay_seconds: [45, 150]   # random pause between submissions
+  auto_accept_required_consents: true   # tick required privacy/data-processing checkboxes
+  cover_letter: when_asked   # always | when_asked | never
+  tailor_resume: true
+  paper: Letter
+  headless: true
+  page_timeout_seconds: 45
+
+schedule:
+  enabled: true
+  interval_hours: 4
+
+llm:
+  # Cheaper pairing. For the strongest (and ~2x pricier) writing, set model: claude-opus-5-5.
+  model: claude-sonnet-5-5          # tailoring, fact-checks, cover letters, form answers
+  scoring_model: claude-haiku-5-5   # fit scoring

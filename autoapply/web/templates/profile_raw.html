@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Edit profile as text · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Edit everything as text</h1>
+<p class="muted">The whole profile in YAML. It's checked before saving, and every save is a new version you can undo from <a href="/profile/history">History</a>. <a href="/profile">← Back to profile</a></p>
+{% if error %}<div class="banner warn"><b>Not saved:</b> {{ error }}</div>{% endif %}
+<form method="post" action="/profile/raw">
+  <textarea name="text" rows="40" spellcheck="false" style="width:100%;font:13px/1.5 var(--mono);padding:10px">{{ text }}</textarea>
+  <div class="bar" style="margin-top:10px"><button class="primary">Save</button>
+    <span class="muted" style="font-size:13px">Tip: bullets under a job are a list; keep each one on a line starting with "- ".</span></div>
+</form>
+<form method="post" action="/profile/import" style="margin-top:18px" onsubmit="return confirm('Replace the current profile with the profile.yaml file from the last deploy? Your current version stays in History.')">
+  <button>Re-import profile.yaml from the deployed app</button>
+  <span class="muted" style="font-size:13px">Only needed if profile.yaml was edited on the laptop and redeployed.</span>
+</form>
+{% endblock %}

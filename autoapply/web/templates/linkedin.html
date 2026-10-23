@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}LinkedIn · Auto-Apply{% endblock %}
+{% block head %}
+<style>
+  .li-top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+  .li-top p { margin: 8px 0 0; max-width: 720px; }
+  .li-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .li-box { margin-bottom: 22px; }
+  .li-box.is-running { border-color: var(--accent); box-shadow: 4px 4px 0 var(--pink-bg); }
+  .li-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .li-row .grow { flex: 1; min-width: 240px; }
+  .meter { height: 14px; border-radius: 999px; background: var(--chip); overflow: hidden; margin-top: 14px; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: 999px; transition: width .6s ease;
+    background: repeating-linear-gradient(45deg, var(--accent-fill) 0 10px, #ff9cc8 10px 20px); background-size: 28px 100%; animation: stripes 1.2s linear infinite; }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.6s infinite; margin-right: 6px; vertical-align: 1px; }
+  .state { font-size: 14px; margin-top: 4px; }
+</style>
+{% endblock %}
+{% block content %}
+{% import "_cells.html" as cell with context %}
+<div class="li-top">
+  <div>
+    <h1>LinkedIn</h1>
+    <p class="muted">Jobs from your LinkedIn alerts that passed the title screen but aren't on a Greenhouse, Lever, or Ashby board, so you apply to them yourself.
+      The regular run doesn't spend anything on these. Looking one up finds the employer's own posting, reads it, and scores it (about {{ '%.0f' % (per * 100) }}¢ each).
+      If it can't be found, open it on LinkedIn and use <a href="/import">Send to Auto-Apply</a>.</p>
+  </div>
+</div>
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+
+<div class="li-stats">
+  <span class="pill">{{ rows|length }} jobs</span>
+  <span class="pill applied">{{ scored }} scored</span>
+  <span class="pill ready">{{ todo }} not looked up</span>
+  <span class="pill rejected">{{ not_found }} not found outside LinkedIn</span>
+</div>
+
+<section id="libox" class="panel li-box{% if lookup_running %} is-running{% endif %}">
+{% if lookup_running %}
+  <div class="li-row">
+    <span class="pill live"><span class="live-dot"></span>Looking up</span>
+    <b class="grow" id="li-current">Starting…</b>
+    <span class="muted" id="li-count" style="font-variant-numeric:tabular-nums"></span>
+    <span class="pill" id="li-cost" hidden></span>
+    <form class="inline" method="post" action="/linkedin/cancel"><button>Stop</button></form>
+  </div>
+  <div class="meter"><i id="li-meter"></i></div>
+  <p class="muted" id="li-results" style="margin:10px 0 0;font-size:14px"></p>
+{% else %}
+  <div class="li-row">
+    <div class="grow">
+      {% if todo %}<b>{{ todo }} jobs still need a paid lookup.</b> <span class="muted">Free checks already ran on them (the employer's own boards on 9 hiring systems). A lookup is one web search, about {{ '%.1f' % (per * 100) }}¢ each; all of them would be about ${{ '%.2f' % est }}. Best title fit first; runs in the background.</span>
+      {% else %}<b>Everything here has been looked up.</b>{% endif %}
+      {% if reposts %}<br><span class="muted" style="font-size:14px">{{ reposts }} recruiter or job-board reposts were set aside for free (the real employer isn't named): <a href="/jobs?status=skipped">see them</a>.</span>{% endif %}
+      {% if last %}<br><span class="muted" style="font-size:14px">Last batch <span data-ago="{{ last.at }}">{{ (last.at | et) }}</span>:
+        {% for k, label in [('good_fit', 'good fits'), ('poor_fit', 'poor fits'), ('applyable', 'found on a supported board'), ('no_description', 'not found'), ('error', 'errors')] %}{% if last.results.get(k) %}{{ last.results[k] }} {{ label }} · {% endif %}{% endfor %}Claude ≈ ${{ '%.2f' % last.cost_usd }}</span>{% endif %}
+    </div>
+    {% if todo %}<form class="inline li-budget" method="post" action="/linkedin/lookup">
+      <label class="muted" style="font-size:14px">Spend up to $<input type="number" name="budget" value="{{ '%.2f' % ([0.5, est] | min) }}" min="0.05" max="20" step="0.05" style="width:80px"></label>
+      <button class="primary">Look up the best ones</button></form>{% endif %}
+  </div>
+{% endif %}
+</section>
+
+<span hidden data-joins-search>{% include "_remote_toggle.html" %}</span>
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th>Status</th><th></th>') }}</tr>
+  {% for j in rows %}
+  <tr data-remote="{{ 1 if j | remote else 0 }}">
+    {{ cell.core(j) }}
+    <td><div class="state">
+        {% if j.id in queued %}<span class="pill ready">queued</span>
+        {% elif j.score is not none %}<span class="muted">{{ j.status_reason or "Scored" }}</span>{% if j.url and 'linkedin.com' not in j.url %} · <a href="{{ j.url }}" target="_blank" rel="noopener">Employer's posting ↗</a>{% endif %}
+        {% elif j.lookup_at %}<span class="muted">Not found outside LinkedIn: use Send to Auto-Apply</span>
+        {% else %}<span class="muted">Not looked up yet</span>{% endif %}
+        · <a href="{{ j.linkedin_url or j.apply_url }}" target="_blank" rel="noopener">LinkedIn ↗</a>
+      </div></td>
+    <td class="act"><div class="rowacts">
+      {% if j.score is none and not j.lookup_at and j.id not in queued %}<form class="inline" method="post" action="/linkedin/lookup"><input type="hidden" name="job_id" value="{{ j.id }}"><button title="About {{ '%.0f' % (per * 100) }}¢">Look up</button></form>{% endif %}
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="applied_myself"><button>Applied</button></form>
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/action"><input type="hidden" name="action" value="skip"><button class="quiet">Skip</button></form>
+    </div></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">No LinkedIn-only jobs right now.</td></tr>
+  {% endfor %}
+</table></div>
+
+<script>
+(function () {
+  var running = {{ 'true' if lookup_running else 'false' }};
+  var LABELS = {good_fit: 'good fits', poor_fit: 'poor fits', applyable: 'found on a supported board', no_description: 'not found', error: 'errors'};
+  function $(id) { return document.getElementById(id); }
+  function ago(iso) { var m = Math.round((Date.now() - new Date(iso)) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : Math.round(m / 1440) + 'd ago'; }
+  document.querySelectorAll('[data-ago]').forEach(function (el) { el.textContent = ago(el.dataset.ago); });
+  function render(p) {
+    if (!running || !$('li-current')) return;
+    $('li-current').textContent = p.current || 'Starting…';
+    if (p.total) {
+      $('li-count').textContent = (p.done || 0) + ' / ' + p.total;
+      $('li-meter').style.width = Math.min(100, 100 * (p.done || 0) / p.total).toFixed(1) + '%';
+    }
+    if (p.cost_usd != null) { $('li-cost').hidden = false; $('li-cost').textContent = 'Claude $' + p.cost_usd.toFixed(2); }
+    var r = p.results || {}, parts = [];
+    Object.keys(LABELS).forEach(function (k) { if (r[k]) parts.push(r[k] + ' ' + LABELS[k]); });
+    $('li-results').textContent = parts.length ? 'So far: ' + parts.join(' · ') : '';
+  }
+  function poll() {
+    fetch('/linkedin/progress', {credentials: 'same-origin', cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (p) {
+      if (p.running !== running) { location.href = '/linkedin'; return; }
+      render(p);
+    }).catch(function () {}).finally(function () { if (running) setTimeout(poll, 2500); });
+  }
+  render({{ lookup_live | tojson }});
+  if (running) setTimeout(poll, 1000);
+})();
+</script>
+{% endblock %}

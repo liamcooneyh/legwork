@@ -1,0 +1,30 @@
+{#- The shared columns of every job list, so they read the same everywhere.
+    Order: Job · Score · Posted · Location · (what the list is about) · actions. -#}
+
+{% macro head(after="") -%}
+<th>Job</th><th>Score</th><th>Posted</th><th class="hide-sm">Location</th>{{ after | safe }}
+{%- endmacro %}
+
+{% macro job(j, sub="", below="", this_one=False) -%}
+<td>{% if this_one %}<b>{{ j.title }}</b> <span class="muted">(this one)</span>{% else %}<a href="/job/{{ j.id | q }}">{{ j.title }}</a>{% endif %}<br><span class="muted">{{ j.company }}{% if j.source == 'linkedin_alert' %} · via LinkedIn{% endif %}{{ sub }}</span>{{ below }}</td>
+{%- endmacro %}
+
+{% macro score(j) -%}
+<td class="score" data-sort="{{ j.score if j.score is not none else -1 }}">{% if j.score is not none %}{{ j.score }}{% elif j.title_fit is defined and j.title_fit is not none %}<span class="muted" style="font-weight:500;font-size:13px" title="How promising the title looks (0-10), used to pick which to look up first">title {{ j.title_fit }}/10</span>{% else %}<span class="muted">–</span>{% endif %}</td>
+{%- endmacro %}
+
+{% macro posted(j) -%}
+{% set p = j | posted %}<td class="posted{% if p and not p.known %} guess{% endif %}" data-sort="{{ p.days if p else 9999 }}" title="{{ p.title if p else '' }}">{% if p %}{% if not p.known %}seen {% endif %}{{ p.when }}<br><span class="muted">{{ p.ago }}</span>{% else %}–{% endif %}</td>
+{%- endmacro %}
+
+{% macro when(value, label="") -%}
+{% set st = value | stamp %}<td class="posted" data-sort="{{ st.days if st else 9999 }}" title="{{ (label ~ ' ' ~ st.when ~ ' (' ~ st.ago ~ ')') if st else '' }}">{% if st %}{{ st.when }}<br><span class="muted">{{ st.ago }}</span>{% else %}–{% endif %}</td>
+{%- endmacro %}
+
+{% macro location(j) -%}
+<td class="hide-sm loc">{{ (j.location or "")[:60] }}{% if j | remote %} <span class="tag new">Remote</span>{% endif %}</td>
+{%- endmacro %}
+
+{% macro core(j, sub="", below="", this_one=False) -%}
+{{ job(j, sub, below, this_one) }}{{ score(j) }}{{ posted(j) }}{{ location(j) }}
+{%- endmacro %}

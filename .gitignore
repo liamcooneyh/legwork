@@ -1,0 +1,21 @@
+.venv
+.venv.nosync
+data/
+.env
+*.egg-info
+__pycache__/
+master_resume.pdf
+# Personal data stays out of git (it still deploys: fly deploy uploads local files).
+profile/profile.yaml
+profile/*.pdf
+profile/*.docx
+
+# Your own settings: examples of each are committed (config.example.yaml, fly.example.toml).
+config.yaml
+fly.toml
+# Local tooling
+.claude/
+.vscode/
+.pytest_cache/
+.DS_Store
+*.pyc

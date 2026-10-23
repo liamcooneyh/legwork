@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Profile · Auto-Apply{% endblock %}
+{% block content %}
+<style>
+  .pf textarea, .pf input[type=text], .pf select { width: 100%; font: inherit; font-size: 14px; padding: 7px 9px; }
+  .pf textarea { resize: vertical; }
+  .pf .row2 { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .pf .bul { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; margin: 6px 0; }
+  .pf label.small { font-size: 12px; color: var(--muted); display: block; margin: 6px 0 2px; }
+  .pf .panel { margin-bottom: 14px; }
+  .pf h2 { margin: 0 0 8px; }
+</style>
+<h1>Profile</h1>
+<p class="muted">Everything the system knows about you. Fit scores, tailored resumes, cover letters and form answers use only what's here, so if a fit check says you're missing something you've done, add it here (or with "I've done this" on the job).
+Version {{ version.id if version else 1 }}{% if version %} · saved {{ (version.created_at | et) }} · {{ version.note }}{% endif %}.</p>
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+<div class="bar" style="margin-bottom:14px">
+  <a class="button" href="/profile/history">History ({{ version_count }})</a>
+  <a class="button" href="/profile/raw">Edit everything as text</a>
+  <form class="inline" method="post" action="/profile/rescore"><button title="Re-score jobs Claude already scored, using your updated profile">Re-score all scored jobs</button></form>
+</div>
+
+<div class="pf">
+<form id="summary" class="panel" method="post" action="/profile/section/summary">
+  <h2>Summary</h2>
+  <textarea name="summary" rows="4">{{ p.summary }}</textarea>
+  <label class="small">Other summaries you've used (tailoring can borrow from these). Separate them with a blank line.</label>
+  <textarea name="alternates" rows="6">{{ p.alternate_summaries | join("\n\n") }}</textarea>
+  <button class="primary" style="margin-top:8px">Save summary</button>
+</form>
+
+{% for e in p.experience %}
+<form id="role:{{ e.id }}" class="panel" method="post" action="/profile/section/role:{{ e.id }}">
+  <h2>{{ e.title }} · {{ e.company }}</h2>
+  <div class="row2">
+    <div><label class="small">Title</label><input type="text" name="title" value="{{ e.title }}"></div>
+    <div><label class="small">Company</label><input type="text" name="company" value="{{ e.company }}"></div>
+    <div><label class="small">Location</label><input type="text" name="location" value="{{ e.location }}"></div>
+    <div><label class="small">Start</label><input type="text" name="start" value="{{ e.start }}"></div>
+    <div><label class="small">End</label><input type="text" name="end" value="{{ e.end }}"></div>
+  </div>
+  <label class="small">Bullets: everything true you've done here. Tailoring picks the best few per job, so more is better.</label>
+  {% for b in e.bullets %}
+  <div class="bul"><textarea name="bullet_{{ loop.index0 }}" rows="2">{{ b }}</textarea>
+    <label class="muted" style="font-size:12px;white-space:nowrap"><input type="checkbox" name="remove_{{ loop.index0 }}" value="1"> remove</label></div>
+  {% endfor %}
+  <label class="small">Add a bullet</label>
+  <textarea name="new_bullet" rows="2" placeholder="Something else you did in this role"></textarea>
+  <button class="primary" style="margin-top:8px">Save {{ e.company }}</button>
+</form>
+{% endfor %}
+
+{% for x in p.projects %}
+<form id="project:{{ x.id }}" class="panel" method="post" action="/profile/section/project:{{ x.id }}">
+  <h2>Project · {{ x.name }}</h2>
+  <div class="row2">
+    <div><label class="small">Name</label><input type="text" name="name" value="{{ x.name }}"></div>
+    <div><label class="small">Link</label><input type="text" name="url" value="{{ x.url }}"></div>
+    <div><label class="small">Dates</label><input type="text" name="dates" value="{{ x.dates }}"></div>
+  </div>
+  {% for b in x.bullets %}
+  <div class="bul"><textarea name="bullet_{{ loop.index0 }}" rows="2">{{ b }}</textarea>
+    <label class="muted" style="font-size:12px;white-space:nowrap"><input type="checkbox" name="remove_{{ loop.index0 }}" value="1"> remove</label></div>
+  {% endfor %}
+  <label class="small">Add a bullet</label><textarea name="new_bullet" rows="2"></textarea>
+  <button class="primary" style="margin-top:8px">Save project</button>
+</form>
+{% endfor %}
+
+<form id="skills" class="panel" method="post" action="/profile/section/skills">
+  <h2>Skills</h2>
+  {% for g in p.skills %}
+  <div class="row2" style="grid-template-columns: 200px 1fr; margin:6px 0">
+    <input type="text" name="group_name_{{ loop.index0 }}" value="{{ g.name }}">
+    <textarea name="group_items_{{ loop.index0 }}" rows="2">{{ g.items | join(", ") }}</textarea>
+  </div>
+  {% endfor %}
+  <div class="row2" style="grid-template-columns: 200px 1fr; margin:6px 0">
+    <input type="text" name="group_name_{{ p.skills|length }}" placeholder="New group">
+    <textarea name="group_items_{{ p.skills|length }}" rows="2" placeholder="Comma-separated skills"></textarea>
+  </div>
+  <p class="muted" style="font-size:12px;margin:4px 0">Comma-separated. Empty a group to remove it.</p>
+  <button class="primary">Save skills</button>
+</form>
+
+<form id="facts" class="panel" method="post" action="/profile/section/facts">
+  <h2>Other true facts</h2>
+  <p class="muted" style="margin-top:0;font-size:13px">Context Claude can use in cover letters, answers and fit scores, without it going on the resume. One per line.</p>
+  <textarea name="facts" rows="9">{{ p.extra_facts | join("\n") }}</textarea>
+  <button class="primary" style="margin-top:8px">Save facts</button>
+</form>
+
+<form id="writing" class="panel" method="post" action="/profile/section/writing">
+  <h2>Writing style</h2>
+  <p class="muted" style="margin-top:0;font-size:13px">How you write. Cover letters and short answers follow this guide and imitate the samples' voice (never their facts, which come from the rest of your profile).</p>
+  <label class="small">Style guide</label>
+  <textarea name="writing_style" rows="12">{{ p.writing_style }}</textarea>
+  {% for s in p.writing_samples %}
+  <label class="small">Sample {{ loop.index }}</label>
+  <div class="bul"><input type="text" name="sample_title_{{ loop.index0 }}" value="{{ s.title }}">
+    <label class="small" style="margin:0;white-space:nowrap"><input type="checkbox" name="sample_remove_{{ loop.index0 }}"> remove</label></div>
+  <textarea name="sample_text_{{ loop.index0 }}" rows="8">{{ s.text }}</textarea>
+  {% endfor %}
+  <label class="small">Add a sample (paste a cover letter or answer you wrote)</label>
+  <input type="text" name="new_sample_title" placeholder="Title, e.g. Axios cover letter">
+  <textarea name="new_sample_text" rows="4" style="margin-top:6px"></textarea>
+  <button class="primary" style="margin-top:8px">Save writing style</button>
+</form>
+
+<form id="answers" class="panel" method="post" action="/profile/section/answers">
+  <h2>Standard answers</h2>
+  <p class="muted" style="margin-top:0;font-size:13px">Used word-for-word when a form question contains the question text.</p>
+  {% for a in p.standard_answers %}
+  <div class="row2" style="grid-template-columns: 1fr 2fr; margin:6px 0">
+    <input type="text" name="q_{{ loop.index0 }}" value="{{ a.question }}"><input type="text" name="a_{{ loop.index0 }}" value="{{ a.answer }}"></div>
+  {% endfor %}
+  {% for i in range(2) %}
+  <div class="row2" style="grid-template-columns: 1fr 2fr; margin:6px 0">
+    <input type="text" name="q_{{ p.standard_answers|length + i }}" placeholder="Question contains…"><input type="text" name="a_{{ p.standard_answers|length + i }}" placeholder="Answer"></div>
+  {% endfor %}
+  <button class="primary">Save answers</button>
+</form>
+
+<form id="prefs" class="panel" method="post" action="/profile/section/prefs">
+  <h2>Work authorization & preferences</h2>
+  {% set wa = p.work_authorization %}{% set pr = p.preferences %}
+  <div class="row2">
+    {% for name, label, val in [('authorized_us', 'Authorized to work in the US', wa.authorized_us), ('requires_sponsorship', 'Need visa sponsorship', wa.requires_sponsorship), ('willing_to_relocate', 'Willing to relocate (general)', pr.willing_to_relocate)] %}
+    <div><label class="small">{{ label }}</label><select name="{{ name }}">
+      <option value="" {% if val is none %}selected{% endif %}>Not set (ask me)</option>
+      <option value="yes" {% if val == true %}selected{% endif %}>Yes</option>
+      <option value="no" {% if val == false %}selected{% endif %}>No</option></select></div>
+    {% endfor %}
+    <div><label class="small">Desired salary (used word-for-word)</label><input type="text" name="desired_salary" value="{{ pr.desired_salary }}"></div>
+    <div><label class="small">Start date</label><input type="text" name="start_date" value="{{ pr.start_date }}"></div>
+    <div><label class="small">Notice period</label><input type="text" name="notice_period" value="{{ pr.notice_period }}"></div>
+  </div>
+  <label class="small">Remote / office preference</label><input type="text" name="remote_preference" value="{{ pr.remote_preference }}">
+  <label class="small">Relocation notes</label><input type="text" name="relocation_notes" value="{{ pr.relocation_notes }}">
+  <button class="primary" style="margin-top:8px">Save preferences</button>
+</form>
+
+<form id="eeo" class="panel" method="post" action="/profile/section/eeo">
+  <h2>Demographic questions</h2>
+  <p class="muted" style="margin-top:0;font-size:13px">Voluntary on every form. "Decline" picks the decline-to-answer option.</p>
+  <div class="row2">
+    {% for k, v in p.eeo.model_dump().items() %}
+    <div><label class="small">{{ k.replace('_', ' ') }}</label><input type="text" name="{{ k }}" value="{{ v }}"></div>
+    {% endfor %}
+  </div>
+  <button class="primary" style="margin-top:8px">Save</button>
+</form>
+
+<form id="contact" class="panel" method="post" action="/profile/section/contact">
+  <h2>Contact info</h2>
+  {% set c = p.personal %}
+  <div class="row2">
+    {% for k in ['first_name', 'last_name', 'preferred_name', 'email', 'phone', 'linkedin', 'github', 'website'] %}
+    <div><label class="small">{{ k.replace('_', ' ') }}</label><input type="text" name="{{ k }}" value="{{ c[k] }}"></div>
+    {% endfor %}
+    <div><label class="small">city</label><input type="text" name="city" value="{{ c.location.city }}"></div>
+    <div><label class="small">state</label><input type="text" name="state" value="{{ c.location.state }}"></div>
+    <div><label class="small">country</label><input type="text" name="country" value="{{ c.location.country }}"></div>
+  </div>
+  <button class="primary" style="margin-top:8px">Save contact info</button>
+</form>
+<p class="muted" style="font-size:13px">Education and anything else not shown here can be edited with <a href="/profile/raw">Edit everything as text</a>.</p>
+</div>
+{% endblock %}

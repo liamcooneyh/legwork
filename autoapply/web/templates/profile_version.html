@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Profile version {{ row.id }} · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Profile version {{ row.id }}</h1>
+<p class="muted">{{ (row.created_at | et) }} · {{ row.note }} · <a href="/profile/history">← History</a></p>
+<form method="post" action="/profile/restore/{{ row.id }}" style="margin-bottom:12px"><button class="primary">Restore this version</button></form>
+<pre style="max-height:none">{{ row.yaml }}</pre>
+{% endblock %}

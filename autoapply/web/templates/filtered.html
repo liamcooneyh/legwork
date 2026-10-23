@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Filtered out · Auto-Apply{% endblock %}
+{% block content %}
+{% import "_cells.html" as cell with context %}
+<h1>Filtered out</h1>
+<p class="muted">Everything that didn't make it, and why. If something looks relevant, press <b>This looks relevant</b>:
+it gets scored right away, and rescued titles teach the AI title screen to keep similar ones.</p>
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+<div class="bar" style="margin:12px 0">
+  {% for key, label in [('screen', 'AI title screen'), ('filters', 'Free filters'), ('poor_fit', 'Poor fit')] %}
+  <a class="pill {{ 'ready' if tab == key else '' }}" href="/filtered?tab={{ key }}">{{ label }} {{ tab_counts.get(key, 0) }}</a>
+  {% endfor %}
+  <span style="flex:1"></span>
+  <form method="get" action="/filtered" class="inline">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <input name="q" value="{{ q }}" placeholder="Search titles, companies, reasons…"
+      style="font:inherit;padding:6px 10px;min-width:240px">
+  </form>
+</div>
+<h2 style="margin-top:4px">{{ heading }} <span class="muted" style="font-weight:normal;font-size:13px">· {{ total }} job{{ '' if total == 1 else 's' }}{% if q %} matching “{{ q }}”{% endif %}</span></h2>
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th>Why</th><th></th>') }}</tr>
+  {% for j in rows %}
+  <tr>
+    {{ cell.core(j, sub=(' · ' ~ j.department[:40]) if j.department else '') }}
+    <td class="muted" style="font-size:13px;max-width:320px">{{ (j.status_reason or '')[:160] }}</td>
+    <td class="act"><div class="rowacts">
+      <form class="inline" method="post" action="/job/{{ j.id | q }}/rescue">
+        <input type="hidden" name="back" value="/filtered?tab={{ tab }}&q={{ q | q }}&offset={{ offset }}">
+        <button>This looks relevant</button></form>
+      <a class="button" href="{{ j.url or j.apply_url }}" target="_blank" rel="noopener">Posting ↗</a>
+    </div></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">Nothing here{% if q %} matching “{{ q }}”{% endif %}.</td></tr>
+  {% endfor %}
+</table></div>
+<div class="bar" style="margin-top:12px">
+  {% if offset > 0 %}<a class="button" href="/filtered?tab={{ tab }}&q={{ q | q }}&offset={{ [offset - 100, 0] | max }}">← Previous</a>{% endif %}
+  {% if offset + 100 < total %}<a class="button" href="/filtered?tab={{ tab }}&q={{ q | q }}&offset={{ offset + 100 }}">Next →</a>{% endif %}
+  <span class="muted" style="font-size:13px">Showing {{ offset + 1 if total else 0 }}–{{ [offset + 100, total] | min }} of {{ total }}</span>
+</div>
+{% if examples %}
+<details class="panel" style="margin-top:16px"><summary>Titles you've rescued ({{ examples|length }}), which the title screen now treats as relevant</summary>
+<ul class="tight">{% for t in examples|reverse %}<li>{{ t }}</li>{% endfor %}</ul></details>
+{% endif %}
+{% endblock %}

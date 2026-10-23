@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Impact · Auto-Apply{% endblock %}
+{% block head %}
+<style>
+  .im-hero { display: flex; flex-wrap: wrap; gap: 14px 36px; align-items: flex-end; margin: 6px 0 22px; }
+  .im-hero .big { font: 700 72px/1 var(--head); color: var(--accent); font-variant-numeric: tabular-nums; }
+  .im-hero .big small { font-size: 26px; color: var(--text); margin-left: 6px; }
+  .im-hero p { margin: 0; max-width: 620px; }
+  .tiles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0 0 22px; }
+  .tile { padding: 14px 18px; }
+  .tile b { display: block; font: 700 30px/1.1 var(--head); font-variant-numeric: tabular-nums; }
+  .tile span { font-weight: 700; font-size: 15px; }
+  .tile small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .chart-card { padding: 18px 20px 14px; margin-bottom: 22px; }
+  .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: baseline; }
+  .chart-head h2 { margin: 0; }
+  .legend { display: flex; gap: 16px; font-size: 14px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+  .chart { position: relative; margin-top: 10px; }
+  .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .chart .grid line { stroke: var(--divider); stroke-width: 1; }
+  .chart .axis text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  .chart .hit { fill: transparent; cursor: default; }
+  .chart .hit:hover + .col rect, .chart .col.on rect { filter: brightness(1.12); }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 8px 11px; font-size: 13px; line-height: 1.45; box-shadow: 3px 3px 0 var(--shadow); white-space: nowrap; transform: translate(-50%, -100%); }
+  .tip b { font-variant-numeric: tabular-nums; }
+  .two { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-bottom: 22px; }
+  .funnel td { vertical-align: middle; }
+  .funnel .bar { height: 8px; border-radius: 4px; background: var(--series-apps); min-width: 2px; }
+  .funnel td.n, .bands td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .how { font-size: 14px; }
+  .how li { margin: 4px 0; }
+</style>
+{% endblock %}
+{% block content %}
+{% macro n(x) %}{{ '{:,}'.format(x or 0) }}{% endmacro %}
+<h1>Impact</h1>
+<div class="im-hero">
+  <div class="big">{{ '%.1f' % s.hours }}<small>hours saved</small></div>
+  <p class="muted">Compared with applying by hand at about {{ '%g' % s.settings.manual }} minutes an application (your estimate:
+    3+ hours for 10, even with Claude chat), and {{ '%g' % s.settings.screen }} minute{{ '' if s.settings.screen == 1 else 's' }} to read each posting you didn't apply to.
+    {{ '%.1f' % s.week_hours }} hours in the last 7 days.</p>
+</div>
+
+<div class="tiles">
+  <div class="tile panel"><b>{{ '%.1f' % s.apps_hours }} h</b><span>From applications</span><small>{{ s.applied }} applied</small></div>
+  <div class="tile panel"><b>{{ '%.1f' % s.screen_hours }} h</b><span>From screening</span><small>{{ n(s.screened) }} postings scored for you</small></div>
+  <div class="tile panel"><b>{% if s.median_minutes %}{{ '%.0f' % s.median_minutes }} min{% else %}–{% endif %}</b><span>Your time per application</span>
+    <small>{% if s.measured %}median of {{ s.measured }} measured (fill to submit){% else %}not measured yet{% endif %}; by hand ≈ {{ '%g' % s.settings.manual }} min</small></div>
+  <div class="tile panel"><b>{{ s.drafted }}</b><span>Drafts prepared</span><small>{% if s.cost_per_draft %}about ${{ '%.2f' % s.cost_per_draft }} of Claude each{% endif %}</small></div>
+  <div class="tile panel"><b>${{ '%.2f' % (s.spend_total or s.drafts_cost) }}</b><span>Claude spend</span>
+    <small>{% if s.spend_total %}everything since {{ s.spend_since }}{% else %}drafts only (full tracking starts now){% endif %}{% if s.cost_per_hour %} · ${{ '%.2f' % s.cost_per_hour }} per hour saved{% endif %}</small></div>
+</div>
+
+{% set top = (s.series | map(attribute='apps_hours') | list) %}
+{% set peak = namespace(v=0) %}{% for d in s.series %}{% if d.apps_hours + d.screen_hours > peak.v %}{% set peak.v = d.apps_hours + d.screen_hours %}{% endif %}{% endfor %}
+{% set nice = namespace(v=1) %}{% for step in [1, 2, 5, 10, 20, 25, 50, 100, 200, 500] %}{% if nice.v < peak.v and step >= peak.v %}{% set nice.v = step %}{% elif nice.v < peak.v %}{% set nice.v = step %}{% endif %}{% endfor %}
+{% set W, H, L, B, T = 720, 230, 34, 26, 8 %}
+{% set plot_h = H - B - T %}{% set slot = (W - L) / (s.series | length) %}{% set bw = [slot * 0.62, 34] | min %}
+<section class="chart-card panel">
+  <div class="chart-head">
+    <h2>Hours saved per day</h2>
+    <div class="legend"><span><i style="background:var(--series-apps)"></i>Applications</span><span><i style="background:var(--series-screen)"></i>Screening</span></div>
+  </div>
+  <div class="chart" id="chart">
+    <svg viewBox="0 0 {{ W }} {{ H }}" role="img" aria-label="Hours saved per day over the last {{ s.series | length }} days, split into applications and screening">
+      <g class="grid axis">
+        {% for frac in [0, 0.5, 1] %}{% set y = T + plot_h * (1 - frac) %}
+        <line x1="{{ L }}" x2="{{ W }}" y1="{{ y }}" y2="{{ y }}"></line>
+        <text x="{{ L - 6 }}" y="{{ y + 4 }}" text-anchor="end">{{ '%g' % (nice.v * frac) }}h</text>{% endfor %}
+      </g>
+      {% for d in s.series %}{% set x = L + slot * loop.index0 + (slot - bw) / 2 %}
+      {% set ha = plot_h * d.apps_hours / nice.v %}{% set hs = plot_h * d.screen_hours / nice.v %}
+      {% set gap = 2 if ha > 0 and hs > 0 else 0 %}
+      <rect class="hit" x="{{ L + slot * loop.index0 }}" y="{{ T }}" width="{{ slot }}" height="{{ plot_h }}"
+            data-label="{{ d.label }}" data-apps="{{ '%.1f' % d.apps_hours }}" data-screen="{{ '%.1f' % d.screen_hours }}" data-applied="{{ d.applied }}"></rect>
+      <g class="col">
+        {% if ha > 0 %}<rect x="{{ x }}" y="{{ T + plot_h - ha }}" width="{{ bw }}" height="{{ ha }}" fill="var(--series-apps)" rx="{{ 0 if hs > 0 else [4, ha / 2] | min }}"></rect>
+          {% if hs == 0 and ha > 4 %}<rect x="{{ x }}" y="{{ T + plot_h - [ha / 2, 4] | min }}" width="{{ bw }}" height="{{ [ha / 2, 4] | min }}" fill="var(--series-apps)"></rect>{% endif %}{% endif %}
+        {% if hs > 0 %}{% set ys = T + plot_h - ha - gap - hs %}
+          <rect x="{{ x }}" y="{{ ys }}" width="{{ bw }}" height="{{ hs }}" fill="var(--series-screen)" rx="{{ [4, hs / 2] | min }}"></rect>
+          {% if hs > 4 %}<rect x="{{ x }}" y="{{ ys + hs - [hs / 2, 4] | min }}" width="{{ bw }}" height="{{ [hs / 2, 4] | min }}" fill="var(--series-screen)"></rect>{% endif %}{% endif %}
+      </g>
+      {% if loop.index0 % 2 == (s.series | length - 1) % 2 %}<text class="axis" x="{{ L + slot * loop.index0 + slot / 2 }}" y="{{ H - 6 }}" text-anchor="middle" fill="var(--muted)" font-size="11">{{ d.label }}</text>{% endif %}
+      {% endfor %}
+      <line x1="{{ L }}" x2="{{ W }}" y1="{{ T + plot_h }}" y2="{{ T + plot_h }}" stroke="var(--line)" stroke-width="1"></line>
+    </svg>
+    <div class="tip" id="tip" hidden></div>
+  </div>
+  <details style="margin-top:8px"><summary class="muted" style="font-size:14px;cursor:pointer">Show as a table</summary>
+    <div class="table-wrap" style="margin-top:8px"><table data-nosearch>
+      <tr><th>Day</th><th>Applications</th><th>Screening</th><th>Applied</th></tr>
+      {% for d in s.series | reverse %}<tr><td>{{ d.label }}</td><td>{{ '%.1f' % d.apps_hours }} h</td><td>{{ '%.1f' % d.screen_hours }} h</td><td>{{ d.applied }}</td></tr>{% endfor %}
+    </table></div>
+  </details>
+</section>
+
+<div class="two">
+  <section class="panel" style="padding:16px 20px">
+    <h2 style="margin-top:0">From found to interviewing</h2>
+    <p class="muted" style="font-size:14px;margin-top:-4px">Each bar is the share that made it past the step before.</p>
+    <table class="funnel" data-nosearch>
+      {% for name, count in s.funnel %}{% set prev = s.funnel[loop.index0 - 1][1] if not loop.first else count %}
+      {% set share = (count / prev) if prev else 0 %}
+      <tr><td>{{ name }}</td><td class="n"><b>{{ n(count) }}</b></td>
+        <td class="n muted" style="font-size:13px">{% if not loop.first %}{{ '%.0f' % (share * 100) if share >= 0.01 or count == 0 else '<1' }}%{% endif %}</td>
+        <td style="width:34%"><div class="bar" style="width:{{ 100 if loop.first else (share * 100) | round(1) }}%"></div></td></tr>
+      {% endfor %}
+    </table>
+  </section>
+  <section class="panel" style="padding:16px 20px">
+    <h2 style="margin-top:0">Replies by fit score</h2>
+    <p class="muted" style="font-size:14px;margin-top:-4px">Whether higher scores get more replies. Replies come from your email tracking and the stages on Applications.</p>
+    <table class="bands" data-nosearch>
+      <tr><th>Score</th><th class="n">Applied</th><th class="n">Heard back</th><th class="n">Interviewing</th></tr>
+      {% for b in s.bands %}<tr><td>{{ b.band }}</td><td class="n">{{ b.applied }}</td>
+        <td class="n">{{ b.replied }}{% if b.applied %} <span class="muted">({{ '%.0f' % (100 * b.replied / b.applied) }}%)</span>{% endif %}</td>
+        <td class="n">{{ b.interviewing }}</td></tr>{% endfor %}
+    </table>
+  </section>
+</div>
+
+<section class="panel" style="padding:16px 20px;margin-bottom:22px">
+  <h2 style="margin-top:0">How fresh your applications were</h2>
+  <p class="muted" style="font-size:14px;margin-top:-4px">How long each job had been posted when you applied{% if s.fresh_median_days is not none %}: a median of
+    <b style="color:var(--text)">{{ '%.0f' % s.fresh_median_days }} day{{ '' if s.fresh_median_days | round == 1 else 's' }}</b>{% endif %},
+    across {{ s.fresh_known }} applications with the employer's posting date. Earlier tends to get seen; runs every few hours catch new postings the same day.</p>
+  {% set fmax = (s.fresh_buckets | map(attribute='count') | max) or 1 %}
+  <table class="funnel" data-nosearch>
+    {% for b in s.fresh_buckets %}
+    <tr><td style="white-space:nowrap">{{ b.label }}</td><td class="n"><b>{{ b.count }}</b></td>
+      <td class="n muted" style="font-size:13px">{% if s.fresh_known %}{{ '%.0f' % (100 * b.count / s.fresh_known) }}%{% endif %}</td>
+      <td style="width:55%"><div class="bar" style="width:{{ (100 * b.count / fmax) | round(1) }}%"></div></td></tr>
+    {% endfor %}
+  </table>
+</section>
+
+<section class="panel how" style="padding:16px 20px">
+  <h2 style="margin-top:0">How it's worked out</h2>
+  <ul>
+    <li><b>Applications:</b> each one you submitted is credited {{ '%g' % s.settings.manual }} minutes, minus your own time on it. That's measured from the extension filling the form to your submit (plus a minute for the fill), or {{ s.fallback_minutes }} minutes when it can't be measured (applications marked by hand, or a tab left open for over an hour).</li>
+    <li><b>Screening:</b> each posting Claude scored that you didn't apply to is credited {{ '%g' % s.settings.screen }} minute{{ '' if s.settings.screen == 1 else 's' }}: the time to open it and decide it's not for you. Jobs dropped by your keyword filters or the title screen aren't counted.</li>
+    <li>Both numbers are in <a href="/settings">Settings</a>.</li>
+  </ul>
+</section>
+
+<script>
+(function () {
+  var chart = document.getElementById("chart"), tip = document.getElementById("tip");
+  chart.querySelectorAll(".hit").forEach(function (r) {
+    r.addEventListener("mouseenter", function () {
+      var d = r.dataset, box = chart.getBoundingClientRect(), b = r.getBoundingClientRect();
+      tip.innerHTML = "<b>" + d.label + "</b><br>Applications: <b>" + d.apps + " h</b> (" + d.applied + " applied)<br>Screening: <b>" + d.screen + " h</b>";
+      tip.style.left = (b.left - box.left + b.width / 2) + "px";
+      tip.style.top = (b.top - box.top + 6) + "px";
+      tip.hidden = false;
+    });
+    r.addEventListener("mouseleave", function () { tip.hidden = true; });
+  });
+})();
+</script>
+{% endblock %}

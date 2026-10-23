@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Profile history · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Profile history</h1>
+<p class="muted">Every saved version. Restoring one saves it as a new version, so nothing is ever lost. <a href="/profile">← Back to profile</a></p>
+{% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
+<div class="table-wrap"><table>
+  <tr><th>Version</th><th>Saved</th><th>What changed</th><th></th></tr>
+  {% for v in versions %}
+  <tr><td>{{ v.id }}{% if loop.first %} <span class="pill ready">current</span>{% endif %}</td>
+    <td class="muted" style="white-space:nowrap">{{ (v.created_at | et) }}</td>
+    <td>{{ v.note }}</td>
+    <td style="white-space:nowrap"><a href="/profile/version/{{ v.id }}">View</a>
+      {% if not loop.first %}<form class="inline" method="post" action="/profile/restore/{{ v.id }}"><button>Restore</button></form>{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Applications · Auto-Apply{% endblock %}
+{% block content %}
+{% import "_cells.html" as cell with context %}
+<h1>Applications</h1>
+<div class="bar" style="justify-content:space-between">
+  <p class="muted" style="margin:0">Everything you've applied to. Stages update on their own when a company emails you back (checked every 30 minutes), and you can change them any time.</p>
+  <form class="inline" method="post" action="/replies/check"><button>Check email now</button></form>
+</div>
+{% if checking %}<div class="banner" style="margin-top:10px">Checking Gmail for replies… refresh in a minute.</div>{% endif %}
+
+<div class="grid" style="margin:14px 0">
+  <a class="panel stat" href="/applications"><b>{{ stage_counts.values()|sum }}</b><span>All</span></a>
+  {% for key, label in stages %}
+  <a class="panel stat" href="/applications?stage={{ key }}" {% if stage == key %}style="background:var(--sun-bg)"{% endif %}><b>{{ stage_counts.get(key, 0) }}</b><span>{{ label }}</span></a>
+  {% endfor %}
+</div>
+
+<div class="table-wrap"><table>
+  <tr>{{ cell.head('<th>Applied</th>') }}<th>Stage</th><th class="hide-sm">Last email</th><th class="hide-sm">Notes</th><th class="hide-sm"></th></tr>
+  {% for it in items %}{% set j = it.job %}
+  <tr>
+    {{ cell.core(j) }}
+    {{ cell.when(j.applied_at or j.updated_at, "Applied") }}
+    <td>
+      <form method="post" action="/job/{{ j.id | q }}/track" style="margin:0">
+        <input type="hidden" name="back" value="applications">
+        <select name="stage" onchange="this.form.submit()" style="font:inherit;font-size:13px;padding:4px 6px">
+          {% for key, label in stages %}<option value="{{ key }}" {% if (j.track_stage or 'applied') == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </form>
+    </td>
+    {% set le = last_email.get(j.id) %}
+    <td class="hide-sm" style="font-size:13px;max-width:260px">{% if le %}{{ le.detail[:120] }}<br><span class="muted">{{ le.at | et_date }}{% if le.link %} · <a href="{{ le.link }}" target="_blank" rel="noopener">open in Gmail ↗</a>{% endif %}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td class="hide-sm muted" style="font-size:13px;max-width:220px">{{ (j.track_notes or '')[:140] }}</td>
+    <td class="hide-sm" style="white-space:nowrap"><a href="{{ j.url or j.apply_url }}" target="_blank" rel="noopener">Posting ↗</a>{% if drive.get(j.id) %}<br><a href="{{ drive[j.id] }}" target="_blank" rel="noopener">Drive ↗</a>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="9" class="muted">{% if stage %}Nothing at this stage.{% else %}No applications yet. Approved and submitted jobs (and ones you mark "I applied myself") show up here.{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+
+{% if replies %}
+<h2>Recent replies</h2>
+<div class="table-wrap"><table>
+  {% for e in replies %}
+  <tr><td style="white-space:nowrap" class="muted">{{ e.at | et_date }}</td>
+    <td><a href="/job/{{ e.job_id | q }}">{{ e.company }}</a> <span class="muted">· {{ e.title[:50] }}</span><br>{{ e.detail }}</td>
+    <td>{% if e.link %}<a href="{{ e.link }}" target="_blank" rel="noopener">Gmail ↗</a>{% endif %}</td></tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

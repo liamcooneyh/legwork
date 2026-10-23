@@ -1,0 +1,57 @@
+# Copy to profile.yaml and fill in, or run `autoapply import-resume your_resume.pdf`.
+# Everything generated (tailored resumes, cover letters, answers) comes only from this file.
+
+personal:
+  first_name: Jane
+  last_name: Doe
+  preferred_name: ""
+  email: jane@example.com
+  phone: "555-555-0100"
+  location: {city: New York, state: NY, country: United States}
+  linkedin: https://www.linkedin.com/in/janedoe
+  github: ""
+  website: ""
+
+work_authorization:
+  authorized_us: null          # true / false
+  requires_sponsorship: null   # true / false
+  notes: ""
+
+preferences:
+  desired_salary: ""           # used verbatim, e.g. "$120k–$140k"
+  willing_to_relocate: null
+  start_date: "Two weeks after offer"
+  notice_period: "Two weeks"
+  remote_preference: "Remote or hybrid"
+
+eeo:                           # "Decline" picks the decline/prefer-not option
+  gender: Decline
+  pronouns: ""
+  race_ethnicity: Decline
+  hispanic_latino: Decline
+  veteran_status: Decline
+  disability_status: Decline
+  sexual_orientation: Decline
+  transgender: Decline
+
+summary: >-
+  Two or three sentences about you.
+
+experience:
+  - id: acme                   # short unique slug; bullets get ids acme.0, acme.1, ...
+    company: Acme Corp
+    title: Data Analyst
+    location: New York, NY
+    start: Jan 2023
+    end: Present
+    bullets:
+      - "What you did, with real numbers."
+
+projects: []
+education:
+  - {school: State University, degree: B.S. Economics, field: Economics, details: "", start: "", end: May 2022, gpa: ""}
+skills:
+  - {name: Languages, items: [SQL, Python]}
+extra_facts: []
+standard_answers:
+  - {question: "how did you hear", answer: "Company careers page"}

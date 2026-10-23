@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: {{ paper }}; margin: 0.9in 1in; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #222; font-size: 11pt; line-height: 1.45; }
+  .name { color: #1f4e79; font-size: 18pt; font-weight: bold; }
+  .contact { color: #444; font-size: 9.5pt; margin-bottom: 22pt; }
+  p { margin: 0 0 10pt; }
+</style>
+</head>
+<body>
+  <div class="name">{{ p.personal.full_name }}</div>
+  <div class="contact">{{ p.personal.email }}{% if p.personal.phone %} &nbsp;|&nbsp; {{ p.personal.phone }}{% endif %}{% if p.personal.location.display() %} &nbsp;|&nbsp; {{ p.personal.location.display() }}{% endif %}</div>
+  <p>{{ date }}</p>
+  {% for para in paragraphs %}<p>{{ para }}</p>{% endfor %}
+</body>
+</html>

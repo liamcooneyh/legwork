@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Add to your profile · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Add to your profile</h1>
+<p class="muted">For <a href="/job/{{ job.id | q }}">{{ job.title }} at {{ job.company }}</a>. Gap found: “{{ gap }}”</p>
+<div class="panel" style="margin-bottom:12px"><b>You wrote:</b> {{ what }}</div>
+{% if error %}<div class="banner warn">{{ error }}</div>{% endif %}
+<form method="post" action="/profile/add" class="panel pf">
+  <input type="hidden" name="job_id" value="{{ job.id }}"><input type="hidden" name="gap" value="{{ gap }}">
+  <style>.pf textarea,.pf select,.pf input[type=text]{width:100%;font:inherit;font-size:14px;padding:7px 9px}</style>
+  <h2 style="margin-top:0">Suggested wording <span class="muted" style="font-weight:normal;font-size:13px">· edit freely; only your words go in</span></h2>
+  <textarea name="text" rows="3">{{ s.text if s else what }}</textarea>
+  <div class="bar" style="margin-top:10px;align-items:flex-start">
+    <label><input type="radio" name="kind" value="bullet" {% if not s or s.kind == 'bullet' %}checked{% endif %}> Resume bullet under
+      <select name="role_id" style="width:auto">
+        {% for e in p.experience %}<option value="{{ e.id }}" {% if s and s.role_id == e.id %}selected{% endif %}>{{ e.title }} · {{ e.company }}</option>{% endfor %}
+        {% for x in p.projects %}<option value="{{ x.id }}" {% if s and s.role_id == x.id %}selected{% endif %}>Project · {{ x.name }}</option>{% endfor %}
+      </select></label>
+  </div>
+  <div class="bar" style="margin-top:8px">
+    <label><input type="radio" name="kind" value="skill" {% if s and s.kind == 'skill' %}checked{% endif %}> A skill, in group
+      <input type="text" name="skill_group" value="{{ s.skill_group if s and s.skill_group else '' }}" placeholder="e.g. Data & Transformation" style="width:220px"></label>
+  </div>
+  <div class="bar" style="margin-top:8px">
+    <label><input type="radio" name="kind" value="fact" {% if s and s.kind == 'fact' %}checked{% endif %}> A fact (used in answers and scoring, not printed on the resume)</label>
+  </div>
+  <div class="bar" style="margin-top:14px">
+    <button class="primary">Save to profile & re-score this job</button>
+    <a class="button" href="/job/{{ job.id | q }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

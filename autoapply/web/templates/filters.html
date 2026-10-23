@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Filters · Auto-Apply{% endblock %}
+{% block content %}
+<h1>Filters</h1>
+<p class="muted">How jobs are narrowed down: <b>1.</b> these free filters drop jobs in the wrong place, too old, at excluded companies, or with a definitely-not title →
+<b>2.</b> an AI title screen keeps every title that could plausibly fit you (titles in "Always consider" skip it) →
+<b>3.</b> Claude reads the full description and scores the fit. Anything dropped is on the <a href="/filtered">Filtered out</a> page, where you can rescue it.
+One entry per line; matching is case-insensitive and on whole words.</p>
+{% if now_passing is not none %}
+<div class="banner">Saved and re-checked every stored job: <b>{{ now_passing }}</b> now pass and go to the title screen / scoring on the next run; <b>{{ now_filtered_out }}</b> no longer pass and were set aside.</div>
+{% endif %}
+<p class="muted">Right now: {{ counts.get('prefiltered', 0) }} waiting to be scored · {{ counts.get('matched', 0) + counts.get('ready', 0) }} matched · {{ counts.get('filtered_out', 0) }} filtered out.</p>
+
+<form method="post" action="/filters">
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))">
+  <div class="panel">
+    <h2 style="margin-top:0">Always consider {% if 'title_include' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+    <p class="muted" style="margin-top:0;font-size:13px">Titles with these words skip the AI title screen and are always scored. Optional: the screen catches other relevant titles.</p>
+    <textarea name="title_include" rows="16">{{ s.title_include|join("\n") }}</textarea>
+  </div>
+  <div class="panel">
+    <h2 style="margin-top:0">Never consider {% if 'title_exclude' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+    <p class="muted" style="margin-top:0;font-size:13px">Titles with these words are dropped before any AI sees them. Keep this to certain non-fits.</p>
+    <textarea name="title_exclude" rows="16">{{ s.title_exclude|join("\n") }}</textarea>
+  </div>
+  <div class="panel">
+    <h2 style="margin-top:0">Wanted locations {% if 'locations' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+    <textarea name="locations" rows="6">{{ s.locations|join("\n") }}</textarea>
+    <label class="opt"><input type="checkbox" name="allow_remote" value="1" {% if s.allow_remote %}checked{% endif %}>
+      <span>Also allow remote jobs<br><span class="muted">US-wide remote, or remote tied to a wanted location. "Remote – Texas" or "Remote – Canada" don't count.</span></span></label>
+    <h2>Remote, but not in {% if 'location_exclude' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+    <textarea name="location_exclude" rows="6">{{ s.location_exclude|join("\n") }}</textarea>
+  </div>
+  <div class="panel">
+    <h2 style="margin-top:0">Never apply to these companies {% if 'exclude_companies' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+    <textarea name="exclude_companies" rows="5">{{ s.exclude_companies|join("\n") }}</textarea>
+    <h2>Skip postings older than</h2>
+    <label class="opt"><input type="number" name="max_age_days" min="0" max="365" value="{{ s.max_age_days }}"><span>days <span class="muted">(0 = no limit)</span></span></label>
+  </div>
+</div>
+<div class="panel" style="margin-top:12px">
+  <h2 style="margin-top:0">What you're looking for {% if 'preferences' in overridden %}<span class="tag new">edited</span>{% endif %}</h2>
+  <p class="muted" style="margin-top:0">Plain English. Claude reads this when scoring each job's fit, so this is where to say things like "no crypto", "prefer Series B+", or "OK with 4 days in office for the right role".</p>
+  <textarea name="preferences" rows="9">{{ s.preferences }}</textarea>
+</div>
+<div class="bar" style="margin-top:12px">
+  <button class="primary">Save and re-check jobs</button>
+  <button name="reset" value="1" onclick="return confirm('Reset every filter to the defaults in config.yaml?')">Reset to defaults</button>
+  <span class="muted">Takes effect immediately. Newly passing jobs are scored on the next run (or press Run now).</span>
+</div>
+</form>
+<style>textarea { width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; resize: vertical; }</style>
+{% endblock %}

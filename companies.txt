@@ -1,0 +1,1200 @@
+# Companies to look for on Greenhouse / Lever / Ashby. One name per line.
+# `autoapply build-boards` checks which exist and writes boards.yaml (the list that is watched).
+# Add or remove freely; names that aren't on a supported ATS are simply skipped.
+
+# --- Data, analytics & developer tools
+Databricks
+dbt Labs
+Fivetran
+Airbyte
+Census
+Hightouch
+Hex
+Sigma Computing
+ThoughtSpot
+Astronomer
+Prefect
+Dagster Labs
+Monte Carlo
+Atlan
+Alation
+Collibra
+Starburst
+ClickHouse
+MotherDuck
+Materialize
+Cockroach Labs
+MongoDB
+Elastic
+Confluent
+Redpanda
+SingleStore
+PlanetScale
+Neon
+Supabase
+Temporal Technologies
+Retool
+Airtable
+Notion
+Linear
+Figma
+Canva
+Miro
+Asana
+ClickUp
+Coda
+Loom
+Grammarly
+Zapier
+Workato
+Tray.io
+Amplitude
+Mixpanel
+Heap
+FullStory
+Pendo
+PostHog
+LaunchDarkly
+Statsig
+Optimizely
+Contentful
+Sanity
+Webflow
+Vercel
+Netlify
+Render
+Railway
+Cloudflare
+Fastly
+DigitalOcean
+HashiCorp
+PagerDuty
+Sentry
+Grafana Labs
+Chronosphere
+Honeycomb
+New Relic
+Sumo Logic
+Harness
+CircleCI
+Postman
+Kong
+Apollo GraphQL
+Replit
+Sourcegraph
+GitLab
+Datadog
+Twilio
+Segment
+Braze
+Iterable
+Klaviyo
+Attentive
+Customer.io
+Algolia
+Coalesce
+Omni Analytics
+Lightdash
+Preset
+Mode Analytics
+Domo
+Alteryx
+Dataiku
+DataRobot
+Weights & Biases
+Pinecone
+Weaviate
+
+# --- AI
+OpenAI
+Anthropic
+Cohere
+Scale AI
+Hugging Face
+Perplexity
+Runway
+ElevenLabs
+Jasper
+Writer
+Glean
+Harvey
+Hebbia
+Rogo
+Sierra
+Decagon
+Cresta
+Ada
+Intercom
+Moveworks
+Cognition
+Anysphere
+Modal
+Together AI
+Fireworks AI
+Baseten
+Replicate
+Mistral AI
+Character.AI
+Synthesia
+Descript
+Gamma
+Tome
+Clay
+Unify
+Common Room
+Regie.ai
+11x
+Abridge
+Ambience Healthcare
+Hippocratic AI
+
+# --- Revenue / GTM / sales tech
+Gong
+Outreach
+Salesloft
+Apollo.io
+Clari
+6sense
+Demandbase
+ZoomInfo
+Seismic
+Highspot
+Gainsight
+Planhat
+Vitally
+ChurnZero
+Totango
+Chargebee
+Maxio
+Zuora
+Avalara
+Pigment
+Mosaic
+Cube
+Vena Solutions
+Anaplan
+Planful
+Mosaic Tech
+Metronome
+Orb
+Stripe
+Paddle
+Recurly
+DealHub
+Conga
+PandaDoc
+DocuSign
+Ironclad
+LinkSquares
+Spekit
+Sendoso
+Qualified
+Drift
+Chili Piper
+Calendly
+Default
+RevenueCat
+Crossbeam
+PartnerStack
+Impartner
+Mutiny
+Warmly
+Momentum
+Attio
+Folk
+Pipedrive
+Close
+Front
+Zendesk
+Freshworks
+Kustomer
+Gorgias
+Help Scout
+Sprinklr
+Yext
+Bloomreach
+Contentsquare
+Hotjar
+Lattice
+Culture Amp
+15Five
+Leapsome
+BambooHR
+Gusto
+Rippling
+Deel
+Remote
+Justworks
+TriNet
+Greenhouse
+Lever
+Ashby
+Gem
+SeekOut
+Checkr
+HireRight
+Workrise
+Navan
+Expensify
+Ramp
+Brex
+Mercury
+Bill.com
+Tipalti
+Melio
+Airbase
+Spendesk
+Coupa
+Zip
+Vendr
+Tropic
+Productiv
+Zylo
+Torii
+
+# --- Security & IT (big SE hirers)
+Vanta
+Drata
+Secureframe
+Snyk
+Wiz
+Lacework
+SentinelOne
+Abnormal Security
+Huntress
+Tines
+Arctic Wolf
+Rapid7
+Tenable
+Okta
+1Password
+Bitwarden
+Keeper Security
+Netskope
+Zscaler
+Cato Networks
+Illumio
+Axonius
+Material Security
+Island
+Chainguard
+Semgrep
+Socket
+Cyera
+Sublime Security
+Expel
+Red Canary
+BlueVoyant
+Kandji
+Jamf
+Iru
+Hexnode
+Tailscale
+Teleport
+Twingate
+StrongDM
+Cribl
+Panther Labs
+Hunters
+Torq
+
+# --- Fintech
+Plaid
+Robinhood
+Betterment
+Wealthfront
+SoFi
+Affirm
+Marqeta
+Carta
+Chime
+Modern Treasury
+Unit
+Column
+Alloy
+Socure
+Persona
+Sardine
+Unit21
+Pipe
+Capchase
+Acorns
+Stash
+Dave
+Current
+Varo
+Greenlight
+Upstart
+LendingClub
+Blend
+Better
+Flywire
+Paxos
+Chainalysis
+Anchorage Digital
+Fireblocks
+Coinbase
+Gemini
+Circle
+Ripple
+Consensys
+Alchemy
+Addepar
+Arcadia
+Ledgerwise
+iCapital
+Vise
+Titan
+Public
+Apex Fintech Solutions
+Clear Street
+Bilt Rewards
+Ramp Network
+Payoneer
+Checkout.com
+Adyen
+Airwallex
+Wise
+Rapyd
+Nium
+Bolt
+Toast
+Olo
+SevenRooms
+Squarespace
+Block
+
+# --- Health & wellness
+Oscar Health
+Flatiron Health
+Zocdoc
+Ro
+Hims & Hers
+Noom
+Headway
+Talkspace
+Spring Health
+Lyra Health
+Headspace
+Calm
+Cityblock Health
+Devoted Health
+Clover Health
+Capsule
+Sword Health
+Hinge Health
+Omada Health
+Cedar
+Komodo Health
+Tempus
+Color
+Garner Health
+Included Health
+Nomi Health
+Thirty Madison
+Cerebral
+Brightline
+Charlie Health
+Tia
+Parsley Health
+Midi Health
+Maven Clinic
+Carrot Fertility
+Progyny
+Kindbody
+Datavant
+Innovaccer
+Athelas
+Commure
+Zus Health
+Healthie
+Elation Health
+Canvas Medical
+Nuvation Bio
+PathAI
+Formation Bio
+Whoop
+Oura
+
+# --- Consumer, media, marketplaces
+Spotify
+Peloton
+SeatGeek
+Discord
+Reddit
+Pinterest
+Duolingo
+Coursera
+Chegg
+Codecademy
+Newsela
+Brainly
+Quizlet
+Substack
+Medium
+Vox Media
+BuzzFeed
+Axios
+The Athletic
+Dotdash Meredith
+Roblox
+Unity
+Niantic
+Twitch
+Instacart
+DoorDash
+Lyft
+Airbnb
+Faire
+Whatnot
+StockX
+Fanatics
+Gopuff
+Warby Parker
+Allbirds
+Glossier
+Rent the Runway
+Stitch Fix
+ThredUp
+Poshmark
+Etsy
+Shopify
+Wayfair
+Chewy
+Hopper
+Vacasa
+Sonder
+Zillow
+Compass
+Opendoor
+Redfin
+Cityblock
+Ollie
+Sweetgreen
+Daily Harvest
+Misfits Market
+Thrive Market
+Hungryroot
+Grubhub
+ClassPass
+Mindbody
+Strava
+Calm
+
+# --- Logistics, industrial, climate
+Flexport
+project44
+Samsara
+Motive
+Convoy
+ShipBob
+Shippo
+EasyPost
+Stord
+Loadsmart
+FourKites
+Anduril
+Shield AI
+Applied Intuition
+Zipline
+Formlabs
+Desktop Metal
+Arcadia Power
+Palmetto
+Aurora Solar
+Watershed
+Persefoni
+Pachama
+Crusoe
+
+# --- Enterprise SaaS & platforms
+Palantir
+Snowflake
+ServiceNow
+Atlassian
+HubSpot
+Dropbox
+Box
+Zoom
+Slack
+Monday.com
+Smartsheet
+Procore
+ServiceTitan
+Veeva
+Benchling
+Celonis
+UiPath
+Automation Anywhere
+Appian
+OutSystems
+Mendix
+Unqork
+Pega
+Sprout Social
+Hootsuite
+Later
+Sprinklr
+Qualtrics
+Medallia
+SurveyMonkey
+Typeform
+Jotform
+Calendly
+Docker
+JetBrains
+GitHub
+Atlassian
+Elastic
+Couchbase
+Redis
+Neo4j
+DataStax
+Aerospike
+Yugabyte
+Imply
+StarTree
+Fivetran
+Matillion
+Informatica
+Talend
+Boomi
+MuleSoft
+Celigo
+Merge
+Paragon
+Nango
+Prismatic
+Rutter
+Codat
+Finch
+Plaid
+Truework
+Argyle
+Pinwheel
+Middesk
+Enigma
+Crunchbase
+PitchBook
+AlphaSense
+Tegus
+Third Bridge
+Guidepoint
+Dataminr
+Bloomberg Beta
+Kensho
+S&P Global
+Moody's
+FactSet
+Morningstar
+Yieldstreet
+Masterworks
+Republic
+Wefunder
+AngelList
+Juniper Square
+Carta
+Ledgy
+Pulley
+Assembled
+Dialpad
+Aircall
+RingCentral
+Talkdesk
+Five9
+Genesys
+NICE
+Sprig
+Maze
+UserTesting
+Dovetail
+Productboard
+Aha!
+Amplitude
+Heap
+Glean
+Guru
+Tettra
+Slab
+Notion
+Confluence
+Document360
+Zendesk
+
+# --- Added 2026-10-19: fintech, trading & capital markets
+Trading Technologies
+Clear Street
+Two Sigma
+Jane Street
+Hudson River Trading
+Virtu Financial
+Tradeweb
+MarketAxess
+Broadridge
+Nasdaq
+Cboe
+DTCC
+Bloomberg
+Symphony
+Talos
+Paxos
+Bakkt
+Galaxy Digital
+Figure
+Petal
+Ramp
+Tally
+Jiko
+Moov
+Synctera
+Treasury Prime
+Lithic
+Highnote
+Rho
+Arc
+Novo
+Found
+Relay Financial
+Ramp Business
+Pilot
+Puzzle
+Rillet
+Campfire
+Digits
+Numeric
+FloQast
+BlackLine
+Trullion
+Mosaic
+Drivetrain
+Abacum
+Runway Financial
+Causal
+Fathom
+Clearco
+Stripe
+Adyen
+Forter
+Riskified
+Signifyd
+Bolt Financial
+Fundbox
+Kabbage
+Brex
+Divvy
+Navan
+Emburse
+Payhawk
+Teampay
+Order
+Billtrust
+HighRadius
+Versapay
+Paystand
+Tesorio
+Upflow
+Chaser
+Esusu
+Stash
+Acorns
+Albert
+Wealthsimple
+Altruist
+Orion
+Envestnet
+YCharts
+Koyfin
+Visible Alpha
+Canalyst
+Daloopa
+Hebbia
+Brightwave
+Bridgewise
+Arta Finance
+Apex Clearing
+DriveWealth
+Alpaca
+Atomic Invest
+# --- NYC & Boston scaleups
+Squarespace
+Datadog
+MongoDB
+Yext
+Braze
+Attentive
+Ramp
+Vroom
+Peloton
+Noom
+Oscar
+Ro
+Hinge Health
+Cityblock
+Lemonade
+Policygenius
+Justworks
+Betterment
+Compass
+Sprinklr
+UiPath
+Dataminr
+Celonis
+Paxos
+Spring Health
+Headway
+Talkspace
+Zocdoc
+Flatiron Health
+Capsule
+Vida Health
+Daily Harvest
+Glossier
+Warby Parker
+Rent the Runway
+Harry's
+Away
+Everlane
+Bombas
+Hims & Hers
+Grubhub
+Seamless
+Fubo
+Dotdash
+Axios
+Bustle Digital Group
+Group Nine
+Insider
+The Information
+Morning Brew
+Puck
+Semafor
+Chartbeat
+Taboola
+Outbrain
+DoubleVerify
+Integral Ad Science
+Innovid
+Moloco
+Applovin
+Liftoff
+MNTN
+Madhive
+Mediaocean
+Basis Technologies
+StackAdapt
+The Trade Desk
+LiveRamp
+Amperity
+mParticle
+Rudderstack
+Snowplow
+Bluecore
+Klaviyo
+Toast
+HubSpot
+Wayfair
+DraftKings
+Rapid7
+Cybereason
+CarGurus
+Simplisafe
+Whoop
+Formlabs
+ezCater
+Motional
+PathAI
+Drift
+Salsify
+Brightcove
+Pegasystems
+Mimecast
+Toast
+Klaviyo
+Starburst
+Cohere Health
+Devoted Health
+Ginkgo Bioworks
+Benchling
+Veeva
+Recorded Future
+Vestmark
+Circle
+Paytronix
+Reify Health
+Wistia
+Lola
+Rue Gilt Groupe
+Bain Capital Ventures
+# --- B2B SaaS (RevOps / SE heavy)
+Gong
+Clari
+Outreach
+Salesloft
+Apollo.io
+Seamless.AI
+Lusha
+Cognism
+ZoomInfo
+Clearbit
+6sense
+Demandbase
+Bombora
+G2
+TrustRadius
+Gartner Digital Markets
+Highspot
+Seismic
+Showpad
+Mindtickle
+Allego
+Spekit
+WorkRamp
+Lessonly
+Gainsight
+Totango
+ChurnZero
+Catalyst
+Vitally
+Planhat
+Custify
+Pendo
+WalkMe
+Whatfix
+Appcues
+Userpilot
+Chameleon
+UserGuiding
+Intercom
+Zendesk
+Front
+Help Scout
+Gladly
+Kustomer
+Dixa
+Gorgias
+Sierra
+Decagon
+Ada
+Forethought
+Moveworks
+Aisera
+Glean
+Guru
+Notion
+Coda
+Airtable
+Smartsheet
+Monday.com
+Asana
+Wrike
+ClickUp
+Linear
+Shortcut
+Height
+Productboard
+Aha!
+Pendo
+Amplitude
+Mixpanel
+Heap
+Contentsquare
+FullStory
+Quantum Metric
+LogRocket
+Hotjar
+Optimizely
+VWO
+LaunchDarkly
+Statsig
+Eppo
+GrowthBook
+Split
+Braze
+Iterable
+Customer.io
+OneSignal
+Airship
+MoEngage
+CleverTap
+Bloomreach
+Dynamic Yield
+Algolia
+Coveo
+Constructor
+Lucidworks
+Contentful
+Sanity
+Storyblok
+Contentstack
+Builder.io
+Webflow
+Framer
+Unbounce
+Instapage
+Hubspot
+Pipedrive
+Close
+Copper
+Freshworks
+Zoho
+Attio
+Folk
+Affinity
+DealCloud
+4Degrees
+Carta
+Pulley
+Ledgy
+Equity Effect
+AngelList
+Juniper Square
+Allvue
+Chronograph
+Visible.vc
+Coupa
+Zip
+Vendr
+Tropic
+Spendflo
+Sastrify
+Ironclad
+Juro
+SpotDraft
+LinkSquares
+Evisort
+ContractPodAi
+DocuSign
+PandaDoc
+Dropbox Sign
+Conga
+DealHub
+Subskribe
+Maxio
+Chargebee
+Recurly
+Paddle
+Orb
+Metronome
+Lago
+m3ter
+Stigg
+Zuora
+Avalara
+Anrok
+Numeral
+TaxJar
+Vertex
+# --- Data, AI & integration platforms
+Fivetran
+Airbyte
+Hightouch
+Census
+Segment
+RudderStack
+Workato
+Tray.io
+Celigo
+Boomi
+MuleSoft
+Zapier
+Make
+n8n
+Pipedream
+Merge
+Paragon
+Nango
+Prismatic
+Cyclr
+Unito
+Workos
+Stytch
+Clerk
+Descope
+Anthropic
+OpenAI
+Cohere
+Mistral AI
+Perplexity
+Writer
+Jasper
+Typeface
+Copy.ai
+Tome
+Gamma
+Beautiful.ai
+Pitch
+Hex
+Mode
+Sigma Computing
+Omni Analytics
+ThoughtSpot
+Lightdash
+Preset
+Metabase
+Count
+Evidence
+Rill
+Cube
+AtScale
+dbt Labs
+Coalesce
+Datafold
+Monte Carlo
+Bigeye
+Anomalo
+Metaplane
+Elementary
+Soda
+Great Expectations
+Atlan
+Select Star
+Secoda
+Castor
+DataHub
+Acryl Data
+Collibra
+Alation
+Informatica
+Matillion
+Rivery
+Hevo Data
+Estuary
+Striim
+Confluent
+Redpanda
+Materialize
+RisingWave
+Decodable
+Tinybird
+ClickHouse
+MotherDuck
+Firebolt
+Starburst
+Dremio
+Onehouse
+Tabular
+Databricks
+Snowflake
+SingleStore
+Rockset
+Pinecone
+Weaviate
+Chroma
+Qdrant
+Zilliz
+LangChain
+LlamaIndex
+Vellum
+Humanloop
+Arize AI
+Fiddler AI
+Weights & Biases
+Comet
+Scale AI
+Labelbox
+Snorkel AI
+Surge AI
+Invisible Technologies
+Turing
+Mercor
+Sana
+Hebbia
+Rogo
+Harvey
+EvenUp
+Spellbook
+Clio
+Filevine
+# --- Healthcare, insurance & proptech
+Oscar Health
+Clover Health
+Bright Health
+Alignment Healthcare
+Devoted Health
+Cityblock Health
+Oak Street Health
+One Medical
+Carbon Health
+Forward
+Tia
+Parsley Health
+Ro
+Nurx
+Thirty Madison
+Calibrate
+Found
+Noom
+Omada Health
+Virta Health
+Livongo
+Hinge Health
+Sword Health
+Kaia Health
+Spring Health
+Lyra Health
+Modern Health
+Headspace
+Brightline
+Rula
+Grow Therapy
+Alma
+SonderMind
+Ophelia
+Bicycle Health
+Pager Health
+Zocdoc
+Solv
+Luma Health
+Phreesia
+Health Gorilla
+Particle Health
+Datavant
+Komodo Health
+Truveta
+Innovaccer
+Arcadia
+Lightbeam Health
+Cedar
+Collective Health
+Garner Health
+Centivo
+Curative
+Lemonade
+Root Insurance
+Hippo
+Kin Insurance
+Next Insurance
+Coalition
+At-Bay
+Corvus Insurance
+Vouch
+Newfront
+Pie Insurance
+Embroker
+Ethos
+Ladder
+Bestow
+Policygenius
+Zillow
+Redfin
+Compass
+Opendoor
+Offerpad
+Divvy Homes
+Landis
+Pacaso
+Arrived
+Roofstock
+Bilt Rewards
+Latchel
+Belong
+EliseAI
+Entrata
+AppFolio
+Buildium
+VTS
+Measurabl
+Enertiv
+Cherre
+Reonomy
+Crexi

@@ -1,0 +1,10 @@
+.git
+.venv
+.venv.nosync
+data
+.env
+*.egg-info
+**/__pycache__
+tests
+master_resume.pdf
+# profile/ is deliberately NOT ignored: the deployed app needs profile.yaml.
