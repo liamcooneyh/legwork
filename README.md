@@ -171,3 +171,7 @@ when one is going): a deploy restarts the machine.
   and cover letter on request.
 - Questions your profile can't answer truthfully stop at **Needs you**. Answer them on the job's
   page and tick **Remember** to reuse the answer on future applications.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
