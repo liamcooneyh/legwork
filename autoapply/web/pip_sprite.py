@@ -3,7 +3,7 @@
     python -m autoapply.web.pip_sprite
 
 Shapes are drawn on a 32x40 grid and outlined, so every pose matches. Poses: standing and its
-idle variations (blink, glance, wave, stretch, dance, cheer, talk), worried, asleep, and four
+idle variations (blink, glance, wave, foot shuffle, yawn, talk), cheer, worried, asleep, and four
 squat frames for runs (knees stay over his feet, the body drops, sweat at the bottom).
 Writes templates/_pip.html (every pose in one SVG; CSS picks which shows) and static/favicon.svg."""
 import math
@@ -111,6 +111,14 @@ def pose(drop=0.0, eyes="open", arms="down", mouth="smile", sweat=(), shift=0, p
     elif mouth == "puff":         # effort face at the bottom of a squat
         for x in (14, 15, 16, 17, 18):
             put(x + sh, my + 1, "K")
+    elif mouth == "yawn":         # a big round O
+        for x in (15, 16, 17):
+            put(x + sh, my - 1, "K"); put(x + sh, my + 2, "K")
+        for y in (my, my + 1):
+            put(14 + sh, y, "K"); put(18 + sh, y, "K")
+            for x in (15, 16, 17):
+                put(x + sh, y, "E")
+        put(16 + sh, my + 1, "R")
     elif mouth == "frown":
         for x in (15, 16, 17):
             put(x + sh, my, "K")
@@ -186,10 +194,10 @@ poses = {
     "talk": pose(mouth="open"),
     "asleep": pose(eyes="closed", mouth="flat"),
     "worried": pose(mouth="frown"),
-    "stretch": pose(eyes="closed", arms="up", mouth="open"),
+    "yawn": pose(eyes="closed", arms="up", mouth="yawn"),
+    "shuffleL": pose(pop=-1),
+    "shuffleR": pose(pop=1),
     "cheer": pose(arms="up", mouth="open"),
-    "danceL": pose(arms="dance", pop=1, mouth="open"),
-    "danceR": pose(arms="dance2", pop=-1, mouth="smile"),
     # one squat: down, bottom (effort face, sweat), up. Drops fly out and fall as he rises.
     "sq0": pose(0.0, arms="out"),
     "sq1": pose(0.55, arms="out", mouth="flat"),
