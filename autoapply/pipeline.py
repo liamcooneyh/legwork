@@ -133,7 +133,7 @@ def prep_progress(job_id: str) -> dict | None:
         entry = _prep_progress.get(job_id)
         return dict(entry, done=list(entry["done"])) if entry else None
 
-NO_DESCRIPTION = "Couldn't find the full description outside LinkedIn: open it there, or use Send to Auto-Apply"
+NO_DESCRIPTION = "Couldn't find the full description outside LinkedIn: open it there, or use Send to Legwork"
 LOOKUP_COST_ESTIMATE = 0.015  # dollars per paid LinkedIn lookup (Haiku + one web search), shown before you start
 
 

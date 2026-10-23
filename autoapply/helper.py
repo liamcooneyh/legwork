@@ -140,7 +140,7 @@ class Session(threading.Thread):
             if outcome.status == "failed":
                 lines = [f"The form didn't load as expected ({outcome.detail[:120]}). Fill it in by hand here."]
             try:
-                page.evaluate(BANNER_JS, ["Filled in by Auto-Apply", lines, ""])
+                page.evaluate(BANNER_JS, ["Filled in by Legwork", lines, ""])
             except PlaywrightError:
                 pass
             self.log(f"ready for you: {name}" + (f" (still needs: {len(todo)})" if todo else ""))
@@ -184,7 +184,7 @@ class Session(threading.Thread):
 
 
 def run(log=print) -> None:
-    log(f"Auto-Apply helper: watching {base_url()} for 'Open on my Mac' requests (Ctrl+C to stop)")
+    log(f"Legwork helper: watching {base_url()} for 'Open on my Mac' requests (Ctrl+C to stop)")
     warned = False
     while True:
         try:

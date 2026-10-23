@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Job Auto-Apply{% endblock %}</title>
+<title>{% block title %}Legwork{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -211,7 +211,7 @@
 <canvas class="bg-ascii" id="bg-ascii" aria-hidden="true" data-motion="{{ '1' if bg_motion else '0' }}"></canvas>
 {% set path = request.url.path if request else '' %}
 <header><div class="wrap">
-  <a class="brand{% if running %} running{% endif %}" href="/" title="{{ 'A run is going' if running else 'Overview' }}"><span class="dot"></span>AUTO/APPLY</a>
+  <a class="brand{% if running %} running{% endif %}" href="/" title="{{ 'A run is going' if running else 'Overview' }}"><span class="dot"></span>LEGWORK</a>
   {% set main_links = [('/', 'Overview'), ('/jobs?status=ready', 'Ready'), ('/applications', 'Applications'), ('/impact', 'Impact'), ('/jobs', 'Jobs'), ('/linkedin', 'LinkedIn')] %}
   {% set more_links = [('/companies', 'Companies'), ('/filters', 'Filters'), ('/filtered', 'Filtered out'), ('/profile', 'Profile'), ('/settings', 'Settings')] %}
   {% macro is_on(href) %}{% set base = href.split('?')[0] %}{{ 'on' if (path == '/' and href == '/') or (base != '/' and path.startswith(base) and (('status=ready' in href) == (request.query_params.get('status') == 'ready'))) else '' }}{% endmacro %}

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Auto-Apply Fill",
+  "name": "Legwork Fill",
   "version": "1.1.0",
-  "description": "Fills job applications in your own browser from your Auto-Apply dashboard drafts. You review and submit.",
+  "description": "Fills job applications in your own browser from your Legwork dashboard drafts. You review and submit.",
   "permissions": ["storage", "webNavigation"],
   "host_permissions": [
     "https://*.fly.dev/*",
@@ -11,7 +11,7 @@
   ],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",
-  "action": { "default_title": "Auto-Apply Fill: settings", "default_popup": "options.html" },
+  "action": { "default_title": "Legwork Fill: settings", "default_popup": "options.html" },
   "content_scripts": [
     {
       "matches": [

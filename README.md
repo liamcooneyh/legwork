@@ -1,6 +1,6 @@
-# Auto-Apply
+# Legwork
 
-A job-search copilot. It watches company job boards and your LinkedIn job alerts, uses Claude to
+Does the legwork of a job search, so you can make the calls. It watches company job boards and your LinkedIn job alerts, uses Claude to
 score every posting against your profile, and for the good fits prepares a full draft: a tailored
 resume, a cover letter when the form asks for one, and an answer to every question on the form.
 **It never submits anything.** A Chrome extension fills the draft into the real application in

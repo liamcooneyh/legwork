@@ -24,7 +24,7 @@ def send(text: str, path: str = "") -> None:
     elif "discord.com/api/webhooks" in url:
         httpx.post(url, json={"content": text[:1900]}, timeout=15)
     else:  # ntfy.sh and anything that accepts a plain-text POST
-        headers = {"Title": "Job auto-apply"}
+        headers = {"Title": "Legwork"}
         if dashboard_url():
             headers["Click"] = dashboard_url() + path  # tapping the notification opens the dashboard
         httpx.post(url, content=text.encode(), headers=headers, timeout=15)

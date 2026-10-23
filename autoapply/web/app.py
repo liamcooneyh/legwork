@@ -205,11 +205,11 @@ def require_auth(request: Request, creds: HTTPBasicCredentials | None = Depends(
 
 
 PRIVACY = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Job Auto-Apply · Privacy</title>
+<title>Legwork · Privacy</title>
 <style>body{font:16px/1.55 -apple-system,Helvetica,Arial,sans-serif;max-width:680px;margin:40px auto;padding:0 16px;color:#1b1f24;background:#fff}
 @media (prefers-color-scheme: dark){body{color:#e6e9ed;background:#101317}a{color:#6fa8dc}}</style></head><body>
-<h1>Job Auto-Apply</h1>
-<p>Job Auto-Apply is a personal tool run by {owner} for their own job search. It is not offered to anyone else.</p>
+<h1>Legwork</h1>
+<p>Legwork is a personal tool run by {owner} for their own job search. It is not offered to anyone else.</p>
 <h2>Privacy</h2>
 <ul>
 <li><b>Gmail</b> (read-only): reads LinkedIn job alert emails and replies from companies about the owner's job applications, to track application status. Emails are not modified, forwarded, or shared.</li>
@@ -698,7 +698,7 @@ def toggle(name: str = Form(...)):
 def notify_test():
     from .. import notify
 
-    notify.send("Test from Job Auto-Apply: notifications are working.")
+    notify.send("Test from Legwork: notifications are working.")
     return RedirectResponse("/", status_code=303)
 
 

@@ -224,7 +224,7 @@ def cmd_notify_test(args) -> None:
 
     if not env.notify_url:
         sys.exit("NOTIFY_URL is not set (e.g. https://ntfy.sh/your-random-topic).")
-    notify.send("Test from Job Auto-Apply: notifications are working.")
+    notify.send("Test from Legwork: notifications are working.")
     print("Sent. Check your phone.")
 
 

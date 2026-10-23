@@ -92,7 +92,7 @@ async function recordFromNavigation(key, p, url, how) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event: "applied", detail, via: "extension" }),
     });
-  } catch (e) { console.warn("Auto-Apply: couldn't record the application", e); }
+  } catch (e) { console.warn("Legwork: couldn't record the application", e); }
 }
 
 function sameForm(formUrl, url) {

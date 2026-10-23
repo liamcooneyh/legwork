@@ -1,4 +1,4 @@
-// Auto-Apply Fill: runs on Greenhouse, Lever and Ashby application pages in your own Chrome.
+// Legwork Fill: runs on Greenhouse, Lever and Ashby application pages in your own Chrome.
 // If your dashboard has a prepared draft for this job it offers to fill the form; you review it
 // and press Submit yourself. When the confirmation appears, the job is recorded as applied.
 // It never presses Submit and never touches CAPTCHAs or security codes.
@@ -31,7 +31,7 @@
       ul { margin: 6px 0 0; padding-left: 18px; } li { margin: 2px 0; }
       .good { color: #c0e68a; font-weight: 700; } .warn { color: #ffd873; }
       .row { display: flex; gap: 6px; margin-top: 10px; }
-    </style><div class="card"><div class="top"><span class="dot"></span><span class="title">Auto-Apply</span>
+    </style><div class="card"><div class="top"><span class="dot"></span><span class="title">Legwork</span>
       <button class="ghost" id="hide">Hide</button></div><div id="body"></div></div>`;
     root.getElementById("hide").onclick = () => host.remove();
     body = root.getElementById("body");
@@ -58,7 +58,7 @@
     el.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
   }
   const t0 = Date.now();
-  const debug = (...a) => console.debug("[auto-apply]", ((Date.now() - t0) / 1000).toFixed(1) + "s", ...a);
+  const debug = (...a) => console.debug("[legwork]", ((Date.now() - t0) / 1000).toFixed(1) + "s", ...a);
   function blur(el) { el.dispatchEvent(new Event("blur", { bubbles: true })); el.blur && el.blur(); }
   function press(el) {
     for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup"]) el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));

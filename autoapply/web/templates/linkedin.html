@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}LinkedIn · Auto-Apply{% endblock %}
+{% block title %}LinkedIn · Legwork{% endblock %}
 {% block head %}
 <style>
   .li-top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
@@ -23,7 +23,7 @@
     <h1>LinkedIn</h1>
     <p class="muted">Jobs from your LinkedIn alerts that passed the title screen but aren't on a Greenhouse, Lever, or Ashby board, so you apply to them yourself.
       The regular run doesn't spend anything on these. Looking one up finds the employer's own posting, reads it, and scores it (about {{ '%.0f' % (per * 100) }}¢ each).
-      If it can't be found, open it on LinkedIn and use <a href="/import">Send to Auto-Apply</a>.</p>
+      If it can't be found, open it on LinkedIn and use <a href="/import">Send to Legwork</a>.</p>
   </div>
 </div>
 {% if msg %}<div class="banner">{{ msg }}</div>{% endif %}
@@ -71,7 +71,7 @@
     <td><div class="state">
         {% if j.id in queued %}<span class="pill ready">queued</span>
         {% elif j.score is not none %}<span class="muted">{{ j.status_reason or "Scored" }}</span>{% if j.url and 'linkedin.com' not in j.url %} · <a href="{{ j.url }}" target="_blank" rel="noopener">Employer's posting ↗</a>{% endif %}
-        {% elif j.lookup_at %}<span class="muted">Not found outside LinkedIn: use Send to Auto-Apply</span>
+        {% elif j.lookup_at %}<span class="muted">Not found outside LinkedIn: use Send to Legwork</span>
         {% else %}<span class="muted">Not looked up yet</span>{% endif %}
         · <a href="{{ j.linkedin_url or j.apply_url }}" target="_blank" rel="noopener">LinkedIn ↗</a>
       </div></td>
