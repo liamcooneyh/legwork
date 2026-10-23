@@ -30,13 +30,23 @@
   .idle .grow { flex: 1; min-width: 220px; }
 
   .buddy { display: flex; align-items: center; gap: 12px; margin: -2px 0 14px; }
-  .buddy-bod { position: relative; flex: none; width: 60px; height: 60px; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
+  .buddy-bod { position: relative; flex: none; width: 60px; height: 82px; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; }
   .buddy-bod:hover, .buddy-bod:active { background: none; box-shadow: none; transform: none; }
-  .buddy-bod svg { width: 60px; height: 60px; display: block; transform-origin: 50% 90%; overflow: visible; }
+  .buddy-bod svg { width: 60px; height: 82px; display: block; transform-origin: 50% 95%; overflow: visible; }
   .b-body { fill: var(--accent-fill); stroke: var(--line); stroke-width: 2.4; }
   .b-line { fill: none; stroke: var(--line); stroke-width: 2.4; stroke-linecap: round; }
   .b-ink { fill: #23202a; } .b-shine { fill: #fff; } .b-cheek { fill: #ff4f9d; opacity: .45; }
   .b-bulb { fill: #d9f59a; stroke: var(--line); stroke-width: 2; }
+  /* Headphones (he's vibing) and legs that clearly never skip leg day */
+  .b-band { fill: none; stroke: #2b2731; stroke-width: 3.6; stroke-linecap: round; }
+  .b-cup { fill: #2b2731; } .b-pad { fill: #d9f59a; }
+  .b-leg { fill: var(--accent-fill); stroke: var(--line); stroke-width: 2.4; stroke-linejoin: round; }
+  .b-cut { fill: none; stroke: var(--line); stroke-width: 1.6; stroke-linecap: round; opacity: .55; }
+  .b-shoe { fill: #fff; stroke: var(--line); stroke-width: 2; } .b-sole { fill: #ff4f9d; }
+  .b-notes { display: none; font: 700 13px var(--head); fill: var(--muted); }
+  .is-running .b-notes { display: inline; } .is-running .b-notes text { animation: note 1.8s ease-in infinite; }
+  .is-running .b-notes text:nth-child(2) { animation-delay: .9s; }
+  @keyframes note { 0% { opacity: 0; transform: translate(0, 4px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(4px, -10px); } }
   .b-eyes { transform-box: fill-box; transform-origin: center; animation: eyeblink 4.5s infinite; }
   .b-closed { display: none; }
   .b-arm-l, .b-arm-r { transform-box: fill-box; }
@@ -159,16 +169,29 @@
        data-next="{{ next_run | et_time if next_run else '' }}" data-error="{{ '1' if last and last.error else '' }}"
        data-finished="{{ last.finished_at if last and last.finished_at else '' }}">
     <button class="buddy-bod" id="buddy-bod" type="button" title="Pip, your job-hunt buddy (click me)" aria-label="Pip says something new">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
+      <svg viewBox="0 0 64 88" aria-hidden="true">
+        <g class="b-notes"><text x="56" y="16">♪</text><text x="0" y="14">♫</text></g>
+        <!-- legs first, so the little body sits on top of them -->
+        <path d="M22 51C8 52 2 61 8 68C3 72 5 80 12 81H23C25 76 26 72 25 68C30 62 30 56 28 52Z" class="b-leg"/>
+        <path d="M42 51C56 52 62 61 56 68C61 72 59 80 52 81H41C39 76 38 72 39 68C34 62 34 56 36 52Z" class="b-leg"/>
+        <path d="M11 58q5 3 4 9" class="b-cut"/><path d="M53 58q-5 3-4 9" class="b-cut"/><path d="M19 56q2 4 1 8" class="b-cut"/><path d="M45 56q-2 4-1 8" class="b-cut"/>
+        <path d="M10 69q5 1.5 9 0" class="b-cut"/><path d="M54 69q-5 1.5-9 0" class="b-cut"/>
+        <path d="M8 74q2 4 6 5" class="b-cut"/><path d="M56 74q-2 4-6 5" class="b-cut"/>
+        <rect x="9" y="80" width="16" height="6" rx="3" class="b-shoe"/><rect x="39" y="80" width="16" height="6" rx="3" class="b-shoe"/>
+        <rect x="10.5" y="84" width="13" height="1.6" rx=".8" class="b-sole"/><rect x="40.5" y="84" width="13" height="1.6" rx=".8" class="b-sole"/>
         <line x1="32" y1="12" x2="32" y2="5" class="b-line"/><circle cx="32" cy="5" r="3.6" class="b-bulb"/>
         <path d="M10 38c0-15 9.5-25 22-25s22 10 22 25c0 12-9 19-22 19S10 50 10 38z" class="b-body"/>
-        <path d="M11 40 4 34" class="b-line b-arm-l"/><path d="M53 40l7-6" class="b-line b-arm-r"/>
+        <path d="M12 46 4 41" class="b-line b-arm-l"/><path d="M52 46l8-5" class="b-line b-arm-r"/>
         <g class="b-eyes"><g class="b-look"><ellipse cx="24" cy="35" rx="3.2" ry="4.2" class="b-ink"/><ellipse cx="40" cy="35" rx="3.2" ry="4.2" class="b-ink"/>
           <circle cx="25.2" cy="33.4" r="1.1" class="b-shine"/><circle cx="41.2" cy="33.4" r="1.1" class="b-shine"/></g></g>
         <g class="b-closed"><path d="M20.5 35.5q3.5 2.6 7 0" class="b-line"/><path d="M36.5 35.5q3.5 2.6 7 0" class="b-line"/></g>
         <circle cx="18.5" cy="42" r="3" class="b-cheek"/><circle cx="45.5" cy="42" r="3" class="b-cheek"/>
         <path d="M27 43.5q5 4.5 10 0" class="b-line b-smile"/>
         <ellipse cx="32" cy="45" rx="3.4" ry="2.6" class="b-mouth"/>
+        <!-- headphones over everything: band across the top of his head, cups on his "ears" -->
+        <path d="M9.5 34C8 12 56 12 54.5 34" class="b-band"/>
+        <rect x="5" y="28" width="8" height="14" rx="3.5" class="b-cup"/><rect x="51" y="28" width="8" height="14" rx="3.5" class="b-cup"/>
+        <rect x="10.5" y="30" width="3" height="10" rx="1.5" class="b-pad"/><rect x="50.5" y="30" width="3" height="10" rx="1.5" class="b-pad"/>
       </svg>
       <span class="zzz" aria-hidden="true">z</span>
       <span class="confetti" aria-hidden="true"></span>
