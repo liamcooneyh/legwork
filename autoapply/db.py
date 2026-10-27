@@ -4,7 +4,9 @@ scheduler thread and the web server."""
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
+from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterator
@@ -217,6 +219,30 @@ def upsert_job(job: dict[str, Any], source: str = "board") -> bool:
              job.get("status", NEW), source),
         )
         return True
+
+
+def posted_name(company: str, description: str | None) -> str:
+    """The company's name as its own posting spells it ("iMentor", "OpenAI", "n8n") when the board's
+    name differs only in case. Web and email addresses don't count."""
+    name = company.strip()
+    if not name or not description:
+        return name
+    found = re.findall(r"(?<![\w@/.])" + re.escape(name) + r"(?![\w]|\.\w)", description, re.I)
+    counts = Counter(found)
+    if not counts:
+        return name
+    best, n = counts.most_common(1)[0]
+    return best if n > counts.get(name, 0) and n >= 2 else name
+
+
+def fix_company_name(job_id: str) -> str:
+    """Respell a job's company from its own posting; returns the name it ends up with."""
+    with connect() as conn:
+        row = conn.execute("SELECT company, description FROM jobs WHERE id=?", (job_id,)).fetchone()
+        name = posted_name(row["company"], row["description"])
+        if name != row["company"]:
+            conn.execute("UPDATE jobs SET company=? WHERE id=?", (name, job_id))
+        return name
 
 
 def existing_ids(ats: str, board: str) -> set[str]:

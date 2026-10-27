@@ -425,6 +425,8 @@ class Pipeline:
                     job = db.get_job(job["id"])
             except httpx.HTTPError:
                 pass
+        if job["company"] != db.fix_company_name(job_id):   # board names are often "Imentor" for "iMentor"
+            job = db.get_job(job_id)
         previous = json.loads(job["score_json"]) if job["score_json"] else None
         prefs = self.cfg.search.preferences
         min_score = db.setting_int("min_score", self.cfg.matching.min_score)
