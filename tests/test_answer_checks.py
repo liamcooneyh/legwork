@@ -99,14 +99,15 @@ def test_score_is_added_up_from_parts():
 
 def test_salary_band_from_posted_range():
     band = m.salary_band
-    assert band("$132K - $165K") == "$140,000–$165,000"       # $140k floor
+    assert band("$132K - $165K") == "$135,000–$165,000"       # a $30k band, not below their minimum
     assert band("$170K - $210K") == "$180,000–$210,000"       # $30k band ending at their top
     assert band("USD 147,000–165,000 (per-year-salary)") == "$150,000–$165,000"   # never below their minimum
     assert band("$141.5K - $192K") == "$160,000–$190,000"     # round figures, to the nearest $5k
     assert band("$103K - $129K") == "$125,000"                # rounded down: never above their top
     assert band("$190K - $270K") == "$230,000–$260,000"       # no higher than their midpoint
-    assert band("$115K - $130K") == "$130,000"                # their top is under the floor: their top
-    assert band("$55 – $65 per hour") == "$65 per hour"
+    assert band("$115K - $130K") == "$125,000–$130,000"       # the $125k floor, inside their range
+    assert band("$90K - $110K") == "$110,000"                 # their top is under the floor: their top
+    assert band("$55 – $65 per hour") == "$61–$65 per hour"
     assert band("Competitive") is None and band("") is None
 
 

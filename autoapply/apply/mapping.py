@@ -240,7 +240,7 @@ def salary_numbers(text: str) -> list[float]:
     return out
 
 
-SALARY_FLOOR = 140_000   # current pay: never ask below it when the posting's range allows more
+SALARY_FLOOR = 125_000   # never ask below this when the posting's range allows more
 SALARY_BAND = 30_000
 HOURS_PER_YEAR = 2080
 
@@ -254,9 +254,9 @@ def _pay_numbers(text: str, hourly: bool = False) -> list[float]:
 
 def salary_band(compensation: str | None) -> str | None:
     """What to ask for when the posting lists pay: a $30k band ending at the top of their range,
-    starting no higher than their midpoint (wide ranges span levels) and no lower than $140k or
+    starting no higher than their midpoint (wide ranges span levels) and no lower than $125k or
     their own minimum.
-    If their top is under $140k, their top: an answer above a posted range can get filtered out."""
+    If their top is under $125k, their top: an answer above a posted range can get filtered out."""
     if not compensation:
         return None
     hourly = bool(re.search(r"hour|\bhr\b|/\s*h\b", compensation, re.I))
