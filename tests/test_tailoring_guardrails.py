@@ -113,3 +113,12 @@ def test_sensitive_questions_come_only_from_profile():
     assert mapping.sensitive_value("authorized", PROFILE, True) is None  # unknown -> needs you, never guessed
     assert mapping.deterministic({"label": "How are you using AI today in your current role?", "type": "textarea"}, PROFILE) is None
     assert mapping.deterministic({"label": "Do you plan to move out of the state/country you reside in?", "type": "text"}, PROFILE) is None
+
+
+def test_removal_only_edits_add_few_words():
+    from autoapply.llm import _added_words
+
+    before = "I built the CPQ tool. I use Claude daily and check everything. I like data."
+    assert _added_words(before, "I built the CPQ tool. I like data.") == 0
+    assert _added_words(before, "I built the CPQ tool, and I like data.") <= 2
+    assert _added_words(before, before + " I also led a team of ten engineers at Google.") >= 10

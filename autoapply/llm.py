@@ -307,6 +307,15 @@ The candidate profile below is the ONLY source of truth about the candidate. Har
 </candidate_profile>"""
 
 
+def _added_words(before: str, after: str) -> int:
+    """How many words `after` has that aren't carried over from `before` (a removal-only edit adds few)."""
+    import difflib
+
+    a, b = before.split(), after.split()
+    ops = difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes()
+    return sum(j2 - j1 for tag, _, _, j1, j2 in ops if tag in ("replace", "insert"))
+
+
 class LLM:
     def __init__(self, profile: Profile, model: str = "claude-sonnet-5-5", client: anthropic.Anthropic | None = None,
                  scoring_model: str | None = None):
@@ -639,11 +648,23 @@ class LLM:
         "with what is true. Never mention the profile, what can or can't be claimed, missing figures, or that you're "
         "avoiding invention: no disclaimers, caveats, or apologies about it. ")
 
+    def _tense(self) -> str:
+        """Profile bullets are often written in the present tense even after a role ends."""
+        now = [f"{e.company} ({e.title})" for e in self.profile.experience if e.end.strip().lower() in ("present", "current", "")]
+        past = [e.company for e in self.profile.experience if f"{e.company} ({e.title})" not in now]
+        listed = past[0] if len(past) < 2 else (" and ".join(past) if len(past) == 2 else ", ".join(past[:-1]) + ", and " + past[-1])
+        return (f"Tense: the current role is {' and '.join(now) or 'none'}; describe it in the present tense. "
+                f"{listed} {'are' if len(past) != 1 else 'is'} past: describe that work in the past tense, "
+                "even where the profile's bullets use the present. ")
+
     def cover_letter(self, job: dict) -> str | None:
-        """A grounded cover letter, or None if it fails fact-checking twice."""
+        """A grounded cover letter, or None if what the fact-check still flags after two fixes can't simply be cut."""
         task = (
             "Task: write a cover letter for the job below. 250-350 words, 3-4 paragraphs, first person. "
-            + self.AS_CANDIDATE +
+            + self.AS_CANDIDATE + self._tense() +
+            "Every statement about the candidate's past work must come from something specific in the profile. "
+            "Views about the role or the work are fine, but don't present a habit, practice, frequency, or kind of "
+            "experience as fact unless the profile says it. " +
             "Open with the specific role and one concrete reason the candidate fits. Connect 2-3 real "
             "experiences from the profile to the posting's needs. Mention something specific about the "
             "company only if it is stated in the posting. " + TOOL_NAMING + " " + AI_EMPHASIS.replace("summary", "letter").replace(
@@ -657,13 +678,20 @@ class LLM:
         )
         letter = self._call(task, content, CoverLetterOut, effort="medium").body.strip()
         # Check, then fix exactly what the check flags (a fresh draft tends to trade one problem for another).
-        for _ in range(3):
+        # The second fix only removes, so it can't bring in anything new.
+        for attempt in range(3):
             check = self._call(
-                "Task: fact-check the cover letter below against the candidate profile. Flag every "
-                "statement about the candidate that the profile does not support (invented experience, "
-                "metrics, tools, frequencies, results, motivations presented as facts about past events, or a past "
-                "employer described in the present tense). Statements about the company taken from the job posting "
-                "are fine. Use item_id 'letter'. Return an empty list if it is accurate.",
+                "Task: fact-check the cover letter below against the candidate profile. Flag only concrete claims "
+                "about the candidate that the profile doesn't support: experience, projects, responsibilities, tools, "
+                "metrics, frequencies (\"daily\"), results, titles, employers, or domains he hasn't shown, and a past "
+                "employer described in the present tense. " + self._tense() + "Don't flag: past tense for a past "
+                "role (that is correct); opinions, views about the role or the work, preferences, or enthusiasm that "
+                "don't assert a past fact; fair summaries or paraphrases of what the profile shows (\"removed 85% of "
+                "manual entry\" for \"eliminated 85% of manual data entry\", \"acted as administrator\", a list of the "
+                "teams he worked with across roles); ordinary figures of speech; anything left out; statements about "
+                "the company taken from the job posting. Flag a statement only if a careful reader would come away "
+                "believing something false about him; if your reasoning ends with it being supported or roughly "
+                "supported, it is not an issue. Use item_id 'letter'. Return an empty list if it is accurate.",
                 f"<job_posting>\n{job['company']} — {job['title']}\n{(job.get('description') or '')[:12000]}\n"
                 f"</job_posting>\n\n<cover_letter>\n{letter}\n</cover_letter>",
                 FactCheck, effort="medium",
@@ -671,13 +699,19 @@ class LLM:
             if not check.issues:
                 return self._without_disclaimers(letter)
             problems = "\n".join(f"- {i.problem}" for i in check.issues)
-            letter = self._call(
+            how = ("rephrase or remove those statements and change nothing else" if attempt == 0 else
+                   "remove those statements (adjust only the words around them so the sentences still read well) "
+                   "and add nothing")
+            revised = self._call(
                 "Task: revise the cover letter so every statement about the candidate is supported by the profile. "
-                "Fix exactly the problems listed: rephrase or remove those statements and change nothing else. Keep "
-                "the voice, structure and length.",
+                f"Fix exactly the problems listed: {how}. Keep the voice and structure. " + self._tense(),
                 f"<cover_letter>\n{letter}\n</cover_letter>\n\n<problems>\n{problems}\n</problems>",
                 CoverLetterOut, effort="medium",
             ).body.strip()
+            if attempt == 2:
+                # The last fix only deletes what's still flagged; keep it only if it really added nothing.
+                return self._without_disclaimers(revised) if _added_words(letter, revised) <= 12 else None
+            letter = revised
         return None
 
     def _without_disclaimers(self, letter: str) -> str:
