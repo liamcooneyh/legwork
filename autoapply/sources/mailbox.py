@@ -118,7 +118,10 @@ def _imap(query: str, max_messages: int) -> list[Message]:
         if status != "OK":
             conn.select("INBOX", readonly=True)
         if gmail:
-            status, data = conn.search(None, "X-GM-RAW", f'"{query}"')
+            # Sent as a UTF-8 literal, not a quoted string: the query itself has quotes in it ("Acme Corp")
+            # and company names can have accents, and either one breaks a quoted string.
+            conn.literal = query.encode("utf-8")
+            status, data = conn.search("UTF-8", "X-GM-RAW")
         else:
             status, data = conn.search(None, '(FROM "linkedin.com")')
         if status != "OK":

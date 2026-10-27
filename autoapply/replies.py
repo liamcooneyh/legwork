@@ -63,7 +63,11 @@ def build_query(jobs: list, days: int) -> str:
         name = re.sub(r'["{}()]', " ", j["company"] or "").strip()
         if name and name not in names:
             names.append(name)
-    terms = [f'"{n}"' for n in names[:60]] + [f"from:{d}" for d in ATS_MAIL_DOMAINS]
+    terms = [f"from:{d}" for d in ATS_MAIL_DOMAINS]
+    for n in names:   # every company you've applied to, as long as the search stays a sensible length
+        if sum(len(t) + 1 for t in terms) + len(n) + 3 > 1800:
+            break
+        terms.append(f'"{n}"')
     return f"newer_than:{days}d -from:linkedin.com -from:me {{{' '.join(terms)}}}"
 
 
