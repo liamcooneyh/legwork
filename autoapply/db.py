@@ -113,6 +113,18 @@ CREATE TABLE IF NOT EXISTS spend (
     day TEXT PRIMARY KEY,             -- YYYY-MM-DD (UTC)
     usd REAL NOT NULL DEFAULT 0
 );
+
+-- What outcomes say about the drafts, scoring, and targeting (see lessons.py). Nothing applies itself.
+CREATE TABLE IF NOT EXISTS lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    area TEXT NOT NULL,               -- writing | scoring | targeting
+    finding TEXT NOT NULL,            -- what the outcomes show
+    evidence TEXT NOT NULL,           -- which applications show it
+    guidance TEXT NOT NULL,           -- the standing instruction it becomes when applied
+    status TEXT NOT NULL DEFAULT 'proposed',   -- proposed | applied | dismissed | retired
+    decided_at TEXT
+);
 """
 
 # Job statuses, in pipeline order.
@@ -745,3 +757,30 @@ def recover_interrupted() -> dict[str, int]:
 def _requeued_event(job_id: str) -> None:
     with connect() as conn:
         _event(conn, job_id, "status", "Preparing was interrupted by a server restart; queued again")
+
+
+# ---------------------------------------------------------------- lessons
+
+LESSON_STATUSES = ("proposed", "applied", "dismissed", "retired")
+
+
+def add_lesson(area: str, finding: str, evidence: str, guidance: str) -> int:
+    with connect() as conn:
+        return conn.execute("INSERT INTO lessons (created_at, area, finding, evidence, guidance) VALUES (?, ?, ?, ?, ?)",
+                            (now(), area, finding, evidence, guidance)).lastrowid
+
+
+def lessons(*statuses: str) -> list[sqlite3.Row]:
+    sql, args = "SELECT * FROM lessons", []
+    if statuses:
+        sql += " WHERE status IN (" + ",".join("?" * len(statuses)) + ")"
+        args = list(statuses)
+    with connect() as conn:
+        return conn.execute(sql + " ORDER BY id DESC", args).fetchall()
+
+
+def set_lesson_status(lesson_id: int, status: str) -> None:
+    if status not in LESSON_STATUSES:
+        raise ValueError(status)
+    with connect() as conn:
+        conn.execute("UPDATE lessons SET status=?, decided_at=? WHERE id=?", (status, now(), lesson_id))

@@ -19,7 +19,7 @@ from typing import Callable
 import httpx
 from playwright.sync_api import Browser, sync_playwright
 
-from . import db, notify
+from . import db, lessons, notify
 from .apply import FormFiller, Outcome
 from .filters import fast_track, prefilter
 from .llm import LLM, LLMError, TailoredResume
@@ -294,6 +294,7 @@ class Pipeline:
     def llm(self) -> LLM | None:
         if self._llm is None and (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
             self._llm = LLM(self.profile, self.cfg.llm.model, scoring_model=self.cfg.llm.scoring_model)
+            self._llm.guidance = lessons.guidance()
         return self._llm
 
     # ------------------------------------------------------------------ discovery
@@ -751,7 +752,8 @@ class Pipeline:
         out_dir.mkdir(parents=True, exist_ok=True)
         app_id = db.start_application(job["id"], dry_run)
         from . import profile_store
-        artifacts: dict = {"dir": str(rel_dir), "profile_version": profile_store.current_version_id()}
+        artifacts: dict = {"dir": str(rel_dir), "profile_version": profile_store.current_version_id(),
+                           "lessons": lessons.applied_ids()}
         cost_before = self.llm.cost_usd() if self.llm is not None else 0.0
         verb = ("re-answering" if reuse else "preparing") if dry_run else ("submitting approved" if reuse else "submitting")
         self.log(f"{verb}: {job['company']} — {job['title']}")
@@ -803,7 +805,8 @@ class Pipeline:
         out_dir = env.artifacts_dir / rel_dir
         out_dir.mkdir(parents=True, exist_ok=True)
         app_id = db.start_application(job["id"], True)
-        artifacts: dict = {"dir": str(rel_dir), "profile_version": profile_store.current_version_id()}
+        artifacts: dict = {"dir": str(rel_dir), "profile_version": profile_store.current_version_id(),
+                           "lessons": lessons.applied_ids()}
         cost_before = self.llm.cost_usd() if self.llm is not None else 0.0
         detail = "Resume and cover letter ready to download"
         try:

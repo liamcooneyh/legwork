@@ -29,6 +29,12 @@
   .funnel td { vertical-align: middle; }
   .funnel .bar { height: 8px; border-radius: 4px; background: var(--series-apps); min-width: 2px; }
   .funnel td.n, .bands td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lesson { border-top: 1.5px solid var(--divider); padding: 12px 0 10px; }
+  .lesson:first-of-type { border-top: 0; }
+  .lesson p { margin: 4px 0; }
+  .lesson .becomes { font-size: 14px; padding: 6px 10px; border-left: 3px solid var(--accent); background: var(--bg); border-radius: 4px; }
+  .lesson .bar { margin-top: 8px; display: flex; gap: 8px; }
+  .lessons-table td { vertical-align: top; }
   .how { font-size: 14px; }
   .how li { margin: 4px 0; }
 </style>
@@ -52,6 +58,49 @@
   <div class="tile panel"><b>${{ '%.2f' % (s.spend_total or s.drafts_cost) }}</b><span>Claude spend</span>
     <small>{% if s.spend_total %}everything since {{ s.spend_since }}{% else %}drafts only (full tracking starts now){% endif %}{% if s.cost_per_hour %} · ${{ '%.2f' % s.cost_per_hour }} per hour saved{% endif %}</small></div>
 </div>
+
+{% set ls = lb.status %}
+<section class="panel" id="lessons" style="padding:16px 20px;margin-bottom:22px">
+  <div class="chart-head">
+    <h2>Lessons</h2>
+    <form class="inline" method="post" action="/lessons/review"><button title="Ask Claude to look over your outcomes now (about 10–20¢)">Review now</button></form>
+  </div>
+  {% if msg %}<div class="banner" style="margin:10px 0">{{ msg }}</div>{% endif %}
+  <p class="muted" style="font-size:14px;margin-top:4px">From how your applications turned out:
+    {% for k, label in lb.labels.items() %}<b style="color:var(--text)">{{ lb.outcomes[k] }}</b> {{ label | lower }}{{ ', ' if not loop.last else '.' }}{% endfor %}
+    Claude looks for patterns after every {{ lb.every }} new outcomes, or weekly if anything new came in
+    ({{ ls.new }} new since {% if ls.last %}the last review, {{ ls.last.isoformat() | et_date }}{% else %}the start{% endif %}).
+    Nothing changes until you apply a lesson, and lessons change emphasis and judgment, never the facts about you.</p>
+
+  {% if lb.proposed %}<h3 style="margin:14px 0 2px">To review</h3>{% endif %}
+  {% for l in lb.proposed %}
+  <div class="lesson">
+    <p><span class="tag new">{{ l.area }}</span><b>{{ l.finding }}</b></p>
+    <p class="muted" style="font-size:14px">{{ l.evidence }}</p>
+    <p class="becomes">Becomes: {{ l.guidance }}</p>
+    <div class="bar">
+      <form class="inline" method="post" action="/lessons/{{ l.id }}/apply"><button class="primary">Apply</button></form>
+      <form class="inline" method="post" action="/lessons/{{ l.id }}/dismiss"><button>Dismiss</button></form>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if lb.applied %}
+  <h3 style="margin:16px 0 6px">In use</h3>
+  <p class="muted" style="font-size:13px;margin-top:0">Screen rate is screens or interviews out of applications with an answer (a rejection, a screen, or 30 days of silence).</p>
+  <table class="lessons-table" data-nosearch>
+    <tr><th>Lesson</th><th class="n">Drafts made under it</th><th class="n">Screen rate after</th><th class="n">Before</th><th></th></tr>
+    {% for a in lb.applied %}{% set l = a.lesson %}
+    <tr><td><span class="tag">{{ l.area }}</span>{{ l.guidance }}<br><small class="muted">{{ 'Applied' if l.status == 'applied' else 'Retired' }} {{ l.decided_at | et_date }}</small></td>
+      <td class="n">{{ a.under.applied }}</td>
+      {% for r in (a.under, a.before) %}<td class="n">{% if r.rate is not none %}{{ '%.0f' % (100 * r.rate) }}% <span class="muted">({{ r.screens }}/{{ r.decided }})</span>{% else %}<span class="muted">–</span>{% endif %}</td>{% endfor %}
+      <td>{% if l.status == 'applied' %}<form class="inline" method="post" action="/lessons/{{ l.id }}/retire"><button title="Stop using this lesson in new drafts">Retire</button></form>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if not lb.proposed and not lb.applied %}<p style="font-size:14px">No lessons yet.{% if ls.decided %} Press Review now to look over the {{ ls.decided }} outcomes so far.{% endif %}</p>{% endif %}
+  {% if lb.dismissed %}<p class="muted" style="font-size:13px">{{ lb.dismissed }} dismissed (Claude won't suggest them again unless the evidence changes).</p>{% endif %}
+</section>
 
 {% set top = (s.series | map(attribute='apps_hours') | list) %}
 {% set peak = namespace(v=0) %}{% for d in s.series %}{% if d.apps_hours + d.screen_hours > peak.v %}{% set peak.v = d.apps_hours + d.screen_hours %}{% endif %}{% endfor %}
