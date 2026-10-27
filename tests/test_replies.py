@@ -53,7 +53,7 @@ def test_check_updates_stage_and_records_email(monkeypatch):
     msg = mailbox.Message("m1", "Next steps with Stripe", "", "We'd love to set up a call.", "Recruiter <r@stripe.com>",
                           format_datetime(datetime.now(timezone.utc)), "<abc@stripe.com>")
     monkeypatch.setattr(mailbox, "configured", lambda: "imap")
-    monkeypatch.setattr(mailbox, "fetch", lambda q, n: [msg])
+    monkeypatch.setattr(mailbox, "fetch", lambda q, n, skip=None: [msg])
     sent = []
     monkeypatch.setattr(replies.notify, "send", lambda text, path="": sent.append(text))
     fake = SimpleNamespace(classify_reply=lambda e, c: ReplyVerdict(job_key=job["id"], category="interview_request",
