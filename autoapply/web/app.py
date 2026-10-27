@@ -18,7 +18,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
 from .. import db
-from .. import impact, lessons
+from .. import impact
 from ..pipeline import LOOKUP_COST_ESTIMATE, RUN_STEPS, Pipeline, cycle_running, linkedin_lookups, prep_progress, progress
 from ..profile import load_profile
 from ..resume_diff import resume_changes
@@ -138,10 +138,6 @@ def _replies() -> None:
         replies.check(pipeline.cfg.replies, pipeline.llm)
     except Exception as e:  # mail hiccups must never take down the scheduler
         print(f"reply check failed: {e}")
-    try:
-        lessons.review(pipeline.llm)    # only calls Claude after enough new outcomes
-    except Exception as e:
-        print(f"lessons review failed: {e}")
 
 
 def _backup() -> None:
@@ -461,27 +457,7 @@ async def helper_event(request: Request, job_id: str) -> dict:
 def impact_page(request: Request):
     cfg = runtime.config()
     return TEMPLATES.TemplateResponse(request, "impact.html", _ctx(
-        request, s=impact.summary(min_score=db.setting_int("min_score", cfg.matching.min_score)), lb=lessons.board(),
-        msg=request.query_params.get("msg", "")))
-
-
-@app.post("/lessons/review", dependencies=[Depends(require_auth)])
-def lessons_review():
-    try:
-        ids = lessons.review(Pipeline(log=lambda m: None).llm, force=True)
-        msg = f"{len(ids)} new lesson{'s' if len(ids) != 1 else ''}" if ids else "No new lessons this time"
-    except Exception as e:
-        msg = f"Review failed: {str(e)[:160]}"
-    return RedirectResponse(f"/impact?msg={quote(msg)}#lessons", status_code=303)
-
-
-@app.post("/lessons/{lesson_id}/{action}", dependencies=[Depends(require_auth)])
-def lessons_decide(lesson_id: int, action: str):
-    status = {"apply": "applied", "dismiss": "dismissed", "retire": "retired"}.get(action)
-    if status is None:
-        raise HTTPException(404)
-    db.set_lesson_status(lesson_id, status)
-    return RedirectResponse("/impact#lessons", status_code=303)
+        request, s=impact.summary(min_score=db.setting_int("min_score", cfg.matching.min_score))))
 
 
 @app.get("/progress", dependencies=[Depends(require_auth)])

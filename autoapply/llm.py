@@ -204,17 +204,6 @@ class ReplyVerdict(Strict):
     summary: str        # one short sentence
 
 
-class LessonFinding(Strict):
-    area: Literal["writing", "scoring", "targeting"]
-    finding: str    # what the outcomes show, in a sentence or two
-    evidence: str   # which applications show it (company, title, outcome), and how many
-    guidance: str   # the standing instruction it would become, written to the model that does that step
-
-
-class LessonReview(Strict):
-    findings: list[LessonFinding]
-
-
 class JobTitle(Strict):
     title: str
 
@@ -328,7 +317,6 @@ class LLM:
         self._system_base = SYSTEM_BASE.format(name=profile.personal.full_name, profile=profile.to_prompt_yaml())
         self.usage = {"calls": 0, "input": 0, "cache_write": 0, "cache_read": 0, "output": 0}
         self._cost = 0.0
-        self.guidance: dict[str, list[str]] = {}    # applied lessons by area (lessons.py)
 
     # List prices, USD per million tokens: (input, output). Cache writes ~1.25x input, reads ~0.05x.
     PRICES = {"claude-opus-5-5": (4.00, 20.00), "claude-sonnet-5-5": (2.00, 10.00), "claude-haiku-5-5": (0.10, 0.50)}
@@ -396,16 +384,6 @@ class LLM:
             raise LLMError("Claude returned no structured output")
         return resp.parsed_output
 
-    def _lessons(self, *areas: str) -> str:
-        """Applied lessons for these areas, appended to a task. They steer judgment and emphasis only."""
-        items = [g for a in areas for g in self.guidance.get(a, [])]
-        if not items:
-            return ""
-        return ("\n\n<lessons_from_outcomes>\nThe candidate approved these lessons from how past applications "
-                "turned out. Follow them where they apply. They change emphasis, wording, and judgment only, never "
-                "the facts: nothing here adds experience the profile doesn't show.\n- " + "\n- ".join(items)
-                + "\n</lessons_from_outcomes>")
-
     # -------------------------------------------------------------- scoring
 
     def score(self, job: dict, preferences: str, previous: dict | None = None, change: str = "",
@@ -438,7 +416,7 @@ class LLM:
             "- dealbreakers: only true blockers (required clearance or license, a required degree the candidate "
             "lacks, a location the candidate can't work from, a people-manager role, three or more years short).\n"
             "Each reason under 25 words; summary 1-2 sentences."
-        ) + self._lessons("scoring", "targeting")
+        )
         content = (
             f"<candidate_preferences>\n{preferences}\n</candidate_preferences>\n\n"
             f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n"
@@ -488,7 +466,7 @@ class LLM:
             "items but never add new ones.\n"
             "Keep the whole resume to roughly one page (at most about 14 bullets in total).\n"
             "- " + TOOL_NAMING + " In skills, list the most relevant items first."
-        ) + self._lessons("writing")
+        )
         content = (
             f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
             f"{(job.get('description') or '')[:30000]}\n</job_posting>"
@@ -672,7 +650,7 @@ class LLM:
                 ", include at most one AI-focused bullet per role, and never make it a role's first bullet", "") + " Greeting and sign-off: follow the candidate's style "
             "guide if it gives them; otherwise 'Dear {Company} Hiring Team,' and 'Thanks,' followed by the "
             "candidate's full name."
-        ) + self._lessons("writing")
+        )
         content = (
             f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
             f"{(job.get('description') or '')[:30000]}\n</job_posting>" + self._voice()
@@ -887,7 +865,7 @@ class LLM:
             "When unsure, keep it.\n\n<candidate>\n" + snapshot + "\n</candidate>"
             + ("\n\nTitles the candidate has explicitly marked as relevant before (keep similar ones):\n- "
                + "\n- ".join(examples[-40:]) if examples else "")
-        ) + self._lessons("targeting")
+        )
         lines = "\n".join(
             f"{i} | {x['title']} | {x['company']} | {x.get('department') or '-'} | {(x.get('location') or '-')[:60]}"
             for i, x in enumerate(postings))
@@ -911,35 +889,6 @@ class LLM:
         out = self._call(task, f"id | title | company | location\n{lines}", LinkedInTriage, effort="low",
                          max_tokens=8000, model=self.scoring_model, with_profile=False)
         return {it.id: it for it in out.items if 0 <= it.id < len(postings)}
-
-    def review_lessons(self, cases: str, lessons: str) -> list[LessonFinding]:
-        """Look across applications and their outcomes for patterns worth changing (lessons.py)."""
-        task = (
-            "Task: you review how the candidate's job applications turned out, to find what should change in the "
-            "system that prepares them. Each application shows its fit score and the parts that drove it, the "
-            "unmet requirements, the tailored resume's summary and lead bullets, the outcome (screen = a recruiter "
-            "screen or interview, rejected = rejected without a screen, no_response = nothing after 30 days, "
-            "waiting = too early to tell), and the candidate's own notes. Compare the outcomes: what do the "
-            "applications that got screens have in common, and what do the rejections without a screen share?\n"
-            "Propose findings only where the evidence supports them (usually 3+ applications pointing the same way; "
-            "say plainly when a sample is small). Each finding is one of:\n"
-            "- writing: how resumes and cover letters are framed (emphasis, order, terms, what leads);\n"
-            "- scoring: how fit is judged (something that scores high but doesn't land, or the reverse);\n"
-            "- targeting: which kinds of roles, companies, or levels to pursue or avoid.\n"
-            "Most applications get no screen, so rejections alone prove little: a finding needs a contrast with "
-            "the screens, or a trait that shows up in nearly all the rejections and could plausibly be the cause.\n"
-            "guidance is the instruction the step's model will follow from now on, while it works on ONE job: "
-            "concrete and short (one or two sentences), something it can act on for that job (e.g. for scoring: "
-            "\"Score role_family 20 or below for pre-sales roles whose core is live product demos\"; for writing: "
-            "\"For RevOps roles, lead the Shelf role with the Salesforce reporting work\"), never a remark about "
-            "scores or outcomes in general. Guidance can never add facts about the candidate or ask for claims "
-            "the profile doesn't support; it can only change emphasis, wording, and judgment. Don't repeat a lesson "
-            "already applied or dismissed (listed below) unless the new evidence changes it; then say what changed. "
-            "Factors the system can't change (his title history, tenure lengths) aren't findings. An empty list is "
-            "a fine result."
-        )
-        content = f"<applications>\n{cases}\n</applications>\n\n<existing_lessons>\n{lessons or '(none)'}\n</existing_lessons>"
-        return self._call(task, content, LessonReview, effort="high", max_tokens=16000).findings
 
     def job_title(self, description: str, company: str = "") -> str:
         """The job title, read from a posting's text (for jobs sent without one)."""
