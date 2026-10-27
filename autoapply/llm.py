@@ -58,6 +58,7 @@ class Requirement(Strict):
     kind: Literal["required", "preferred"]
     status: Literal["met", "partly", "not_met"]
     evidence: str   # where the profile shows it, or why not
+    hard: bool      # a specific tool, certification, industry/domain, or infra skill (screeners filter on these)
 
 
 class FitBreakdown(Strict):
@@ -76,6 +77,7 @@ SCORE_PARTS = [("role_family", "Role family fit", 30), ("required", "Required qu
                ("preferred", "Preferred qualifications", 15), ("experience_level", "Experience level", 10),
                ("location", "Location & work setup", 10), ("pay", "Pay", 5)]
 _STATUS_CREDIT = {"met": 1.0, "partly": 0.5, "not_met": 0.0}
+HARD_MISS_POINTS, HARD_MISS_CAP = 4, 12   # an unmet hard requirement is where recruiters screen people out
 
 
 def score_from_breakdown(b: FitBreakdown) -> dict:
@@ -89,10 +91,14 @@ def score_from_breakdown(b: FitBreakdown) -> dict:
             return full_when_none
         return sum(_STATUS_CREDIT[r.status] for r in reqs) / len(reqs)
 
+    hard_misses = sum(1 for r in b.requirements if r.kind == "required" and r.hard and r.status == "not_met")
+    hard_penalty = min(HARD_MISS_CAP, HARD_MISS_POINTS * hard_misses)
     parts = {
         "role_family": {"points": max(0, min(caps["role_family"], b.role_family.points)), "reason": b.role_family.reason},
-        "required": {"points": round(caps["required"] * share("required", 0.8)),
-                     "reason": "Share of the posting's required qualifications your profile shows (partly met counts half)."},
+        "required": {"points": max(0, round(caps["required"] * share("required", 0.8)) - hard_penalty),
+                     "reason": "Share of the posting's required qualifications your profile shows (partly met counts half)"
+                               + (f"; minus {hard_penalty} for {hard_misses} unmet hard requirement{'s' if hard_misses != 1 else ''} "
+                                  "(a specific tool, certification, industry, or infra skill)." if hard_penalty else ".")},
         "preferred": {"points": round(caps["preferred"] * share("preferred", 1.0)),
                       "reason": "Share of the nice-to-haves your profile shows. Missing ones are minor."},
         "experience_level": {"points": max(0, min(caps["experience_level"], b.experience_level.points)),
@@ -274,13 +280,18 @@ def _numbers(text: str) -> set[str]:
 
 # Shared by resumes, cover letters and written answers.
 TOOL_NAMING = (
-    "Naming tools and vendors: name a specific product or vendor (e.g. Salesforce, HubSpot, Workato, Planhat, "
-    "Power BI, Apex) only when the job posting mentions it or asks for that kind of tool by name (\"CRM "
-    "experience\" allows naming the CRM). Otherwise describe the same work accurately in general terms (\"writes "
-    "results back into the CRM\", \"business systems\", \"an integration platform\") or leave the tool out; many "
-    "teams dislike particular vendors. Lead with the tools the posting itself names. Never add a tool the profile "
-    "doesn't show."
+    "Naming tools: describe the candidate's own work with the real tool and vendor names (Salesforce, Workato, "
+    "Apex, Planhat, Power BI, Snowflake...). Specific names are credible and match keyword screens; vague "
+    "stand-ins (\"an integration platform\", \"the CRM\", \"a business platform\") read as evasive, so never use "
+    "them in place of a real name. Lead with the tools the posting itself names, and don't make a vendor the "
+    "posting never mentions the headline of a summary or opening sentence (some teams dislike particular "
+    "vendors). Never add a tool the profile doesn't show."
 )
+# What rejections without a screen had in common: AI front and center, and a generic opener.
+AI_EMPHASIS = (
+    "AI emphasis: unless the posting is for AI, LLM, or automation work, mention AI at most once in the summary "
+    "(or not at all), include at most one AI-focused bullet per role, and never make it a role's first bullet. "
+    "Lead each role with the bullets that show the posting's core function.")
 
 SYSTEM_BASE = """You are the writing engine of a personal job-application assistant working on behalf of {name}.
 
@@ -386,12 +397,18 @@ class LLM:
             "evidence note (which role or project shows it, or why not). Count close equivalents as partly met (e.g. "
             "GitHub Actions or Workato orchestration vs. Airflow; client-facing technical consulting vs. a formal "
             "pre-sales title; Snowflake vs. BigQuery). Years of experience is judged in experience_level, not here.\n"
+            "  hard = true for requirements that name a specific tool or platform (Xactly, SAP, Gong), a certification, "
+            "an industry or domain (banking, healthcare payers), or a security/infra skill (SSO/SAML, networking). "
+            "A hard requirement the profile doesn't show is not_met, not partly: partly is only for a "
+            "genuine overlap with the same kind of thing (another comp tool, another BI tool).\n"
             "- role_family (0-30): 27-30 squarely in one of the candidate's target families; 20-26 adjacent or a "
             "mix; 10-19 partly related; 0-9 a different function. A 'manager' title does not lower this unless the "
             "posting says the role manages people. Heavy software engineering is not a fit; light, applied "
             "software engineering is (see preferences).\n"
             "- experience_level (0-10): 10 when the ask fits ~3-6 years; 7 about a year short or a bit senior; 4 two "
-            "years short; 0 three or more years short or 8+ years required.\n"
+            "years short; 0 three or more years short or 8+ years required. Count years in the posting's own function "
+            "(\"5+ years in solutions engineering\" means years doing solutions engineering), not total career; years in "
+            "a different function count about half.\n"
             "- location (0-10): 10 for US remote or New York City / Boston with any office days; 0 when it requires "
             "working somewhere else.\n"
             "- pay (0-5): 5 when the posted range overlaps $120k-$150k OR no pay is posted (missing pay is neutral, "
@@ -426,8 +443,14 @@ class LLM:
         task = (
             "Task: tailor the candidate's one-page resume for the job below.\n"
             "- summary: 2-3 sentences rewritten to foreground what this job needs (alternate_summaries in the "
-            "profile show framings the candidate has used before). Only facts from the profile; "
-            "don't upgrade scope or seniority (administration is not architecture, 'experienced with' is not 'daily use').\n"
+            "profile show framings the candidate has used before). Open with the work this role does, described as "
+            "work the candidate does, in the posting's own terms and only as far as the profile shows it (e.g. "
+            "\"Builds Salesforce reporting, pipeline analytics, and quoting tools for sales and finance teams.\" for "
+            "a RevOps role), never a generic opener like \"Data professional with 4+ years\" and never a job title "
+            "he hasn't held (\"RevOps analyst with…\"). \"4+ years\" is his total experience: don't attach it to "
+            "one function or tool. Only facts from the profile; don't upgrade scope or seniority (administration is "
+            "not architecture, 'experienced with' is not 'daily use').\n"
+            "- " + AI_EMPHASIS + "\n"
             "- experience: include EVERY role in the profile, by id, in the same order. For each role pick "
             "the most relevant 1-5 bullets. Each output bullet must cite the profile bullet id(s) it is "
             "based on in source_ids (ids look like 'acme.0'), using only ids from that same role. "
@@ -442,8 +465,7 @@ class LLM:
             "relevant come first. Items must be copied verbatim from the profile; you may drop irrelevant "
             "items but never add new ones.\n"
             "Keep the whole resume to roughly one page (at most about 14 bullets in total).\n"
-            "- " + TOOL_NAMING + " This applies to the summary and to bullet wording; in skills, drop vendor items "
-            "the posting has no use for before listing them."
+            "- " + TOOL_NAMING + " In skills, list the most relevant items first."
         )
         content = (
             f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
@@ -531,8 +553,11 @@ class LLM:
             "Task: fact-check rewritten resume text against its sources. For each item, flag it if the "
             "rewritten text claims anything its sources do not support: a new tool, technology, metric, "
             "scope, seniority, responsibility, outcome, or domain. Rewording and condensing are fine; "
-            "emphasis is fine; added substance is not. For the summary, the source is the whole candidate "
-            "profile. For each problem also give `fix`: the rewritten text with only the unsupported parts "
+            "emphasis is fine; added substance is not. Leaving things out is never a problem: don't flag omissions. "
+            "For the summary, the source is the whole candidate profile; opening with the kind of work the job "
+            "does is fine when the profile shows him doing that work (flag a job title he hasn't held, or years "
+            "attached to a function or tool beyond what the profile shows), and a fix keeps that opening. "
+            "For each problem also give `fix`: the rewritten text with only the unsupported parts "
             "removed or reworded to match the sources (keep everything else), or \"\" if it can't be saved. "
             "Return only items with real problems; an empty list is a good result."
         )
@@ -621,7 +646,8 @@ class LLM:
             + self.AS_CANDIDATE +
             "Open with the specific role and one concrete reason the candidate fits. Connect 2-3 real "
             "experiences from the profile to the posting's needs. Mention something specific about the "
-            "company only if it is stated in the posting. " + TOOL_NAMING + " Greeting and sign-off: follow the candidate's style "
+            "company only if it is stated in the posting. " + TOOL_NAMING + " " + AI_EMPHASIS.replace("summary", "letter").replace(
+                ", include at most one AI-focused bullet per role, and never make it a role's first bullet", "") + " Greeting and sign-off: follow the candidate's style "
             "guide if it gives them; otherwise 'Dear {Company} Hiring Team,' and 'Thanks,' followed by the "
             "candidate's full name."
         )

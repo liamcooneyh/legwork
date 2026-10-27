@@ -87,9 +87,9 @@ def test_score_is_added_up_from_parts():
     part = lambda n, r="": llm.PartScore(points=n, reason=r)
     b = llm.FitBreakdown(
         role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), summary="s", dealbreakers=[],
-        requirements=[llm.Requirement(text="SQL", kind="required", status="met", evidence="Acme"),
-                      llm.Requirement(text="Jira", kind="required", status="partly", evidence="Globex"),
-                      llm.Requirement(text="Looker", kind="preferred", status="not_met", evidence="not shown")])
+        requirements=[llm.Requirement(text="SQL", kind="required", status="met", evidence="Acme", hard=False),
+                      llm.Requirement(text="Jira", kind="required", status="partly", evidence="Globex", hard=False),
+                      llm.Requirement(text="Looker", kind="preferred", status="not_met", evidence="not shown", hard=False)])
     out = llm.score_from_breakdown(b)
     assert out["parts"]["required"]["points"] == 22   # (1 + 0.5) / 2 of 30
     assert out["parts"]["preferred"]["points"] == 0
@@ -145,3 +145,17 @@ def test_strip_meta_keeps_the_real_answer():
     text = ("Claude Code is a core part of how I build. I check the SQL and the question. "
             "I don't have a measured figure for time saved to quote.")
     assert m.strip_meta(text) == "Claude Code is a core part of how I build. I check the SQL and the question."
+
+
+
+def test_unmet_hard_requirements_cost_real_points():
+    from autoapply import llm
+    part = lambda n: llm.PartScore(points=n, reason="")
+    req = lambda t, st, hard: llm.Requirement(text=t, kind="required", status=st, evidence="", hard=hard)
+    base = dict(role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), summary="s", dealbreakers=[])
+    soft = llm.score_from_breakdown(llm.FitBreakdown(**base, requirements=[req("SQL", "met", False), req("Stakeholders", "not_met", False)]))
+    hard = llm.score_from_breakdown(llm.FitBreakdown(**base, requirements=[req("SQL", "met", False), req("Xactly", "not_met", True)]))
+    assert soft["parts"]["required"]["points"] == 15 and hard["parts"]["required"]["points"] == 11
+    many = llm.score_from_breakdown(llm.FitBreakdown(**base, requirements=[req(t, "not_met", True) for t in "abcde"] + [req("SQL", "met", False)]))
+    assert many["parts"]["required"]["points"] == 0          # never below zero
+    assert "unmet hard requirement" in hard["parts"]["required"]["reason"]
