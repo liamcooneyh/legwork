@@ -664,6 +664,17 @@ def is_paused() -> bool:
     return kv_get("paused", "0") == "1"
 
 
+def set_paused(on: bool) -> None:
+    """Pause or resume, remembering when a pause started (the Overview says so)."""
+    if on and not is_paused():
+        kv_set("paused_at", now())
+    kv_set("paused", "1" if on else "0")
+
+
+def paused_since() -> str | None:
+    return kv_get("paused_at") if is_paused() else None
+
+
 # Settings the dashboard can change at runtime (override config.yaml until changed again).
 MODES = ("approve", "auto")
 

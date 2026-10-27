@@ -248,6 +248,7 @@ def _ctx(request: Request, **extra) -> dict:
     return {
         "request": request,
         "paused": db.is_paused(),
+        "paused_since": db.paused_since(),
         "mode": db.apply_mode(cfg.apply.mode),
         "running": cycle_running(),
         "cfg": cfg,
@@ -687,7 +688,7 @@ def save_settings(max_per_day: int = Form(...), min_score: int = Form(...), paus
     db.kv_set("impact_screen_minutes", str(max(0.0, min(screen_minutes, 30.0))))
     db.kv_set("bg_motion", "1" if bg_motion else "0")
     db.kv_set("min_score", str(max(0, min(min_score, 100))))
-    db.kv_set("paused", "1" if paused else "0")
+    db.set_paused(bool(paused))
     return RedirectResponse("/settings?saved=1", status_code=303)
 
 
@@ -695,7 +696,7 @@ def save_settings(max_per_day: int = Form(...), min_score: int = Form(...), paus
 def toggle(name: str = Form(...)):
     cfg = load_config()
     if name == "paused":
-        db.kv_set("paused", "0" if db.is_paused() else "1")
+        db.set_paused(not db.is_paused())
     else:
         raise HTTPException(404)
     return RedirectResponse("/", status_code=303)

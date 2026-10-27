@@ -167,6 +167,15 @@
   <div class="runfoot"><span class="now-item" id="run-current"></span><span class="muted" id="run-count" style="font-variant-numeric:tabular-nums"></span></div>
 {% else %}
   <div class="idle">
+  {% if paused %}
+    <span class="pill paused">Paused</span>
+    <div class="grow">
+      <b>Paused{% if paused_since %} since {{ paused_since | et }}{% endif %}.</b> No runs until you resume: nothing new is found, scored, or prepared.
+      {% if last %}<br><span class="muted">Last run {{ ((last.finished_at or last.started_at) | et) }}.</span>{% endif %}
+    </div>
+    <form class="inline" method="post" action="/toggle"><input type="hidden" name="name" value="paused"><button class="primary">▶ Resume</button></form>
+  </div>
+  {% else %}
     <span class="pill">Idle</span>
     <div class="grow">
       {% if last %}Last run <b data-ago="{{ last.finished_at or last.started_at }}">{{ ((last.finished_at or last.started_at) | et) }}</b>{% if last.error %} · <span style="color:var(--bad)">{{ last.error[:120] }}</span>{% endif %}{% else %}No runs yet.{% endif %}
@@ -175,6 +184,7 @@
     </div>
     <form class="inline" method="post" action="/run"><button class="primary">▶ Run now</button></form>
   </div>
+  {% endif %}
 {% endif %}
 </section>
 

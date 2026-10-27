@@ -880,14 +880,15 @@ class Pipeline:
         if not _cycle_lock.acquire(blocking=False):
             self.log("a cycle is already running; skipping")
             return None
+        if db.is_paused():
+            _cycle_lock.release()
+            self.log("paused; skipping this cycle")
+            return {"paused": True}
         run_id = db.start_run()
         stats: dict = {}
         error = None
         progress.begin(self.llm.cost_usd if self.llm is not None else None)
         try:
-            if db.is_paused():
-                stats["paused"] = True
-                return stats
             # If the filters changed (config.yaml or the Filters page), re-check jobs already stored.
             import hashlib
             fingerprint = hashlib.sha256((runtime.FILTER_LOGIC_VERSION + self.cfg.search.model_dump_json()).encode()).hexdigest()
