@@ -129,7 +129,7 @@ def _check(cfg: ReplyTrackingConfig, llm: LLM | None, log) -> dict:
     if not jobs:
         return {**stats, "skipped": "no applications to track yet"}
 
-    for msg in mailbox.fetch(build_query(jobs, cfg.lookback_days), cfg.max_emails):
+    for msg in mailbox.fetch(build_query(jobs, cfg.lookback_days), cfg.max_emails, skip=db.mail_seen):
         key = msg.message_id or msg.id
         if db.mail_seen(key):
             continue

@@ -829,7 +829,21 @@ def make_materials(job_id: str):
     return RedirectResponse(f"/job/{quote(job_id, safe='')}?msg={msg}", status_code=303)
 
 
-BOOKMARKLET = "(function(){var q=function(s){var e=document.querySelector(s);return e?e.innerText.trim():''};var t=q('.job-details-jobs-unified-top-card__job-title')||q('.top-card-layout__title')||q('h1');var c=q('.job-details-jobs-unified-top-card__company-name')||q('.topcard__org-name-link')||(document.title.split(' | ')[1]||'');var l=(q('.job-details-jobs-unified-top-card__primary-description-container')||q('.job-details-jobs-unified-top-card__tertiary-description-container')||q('.topcard__flavor--bullet')).split('\\n')[0].split(' · ')[0];var d=q('#job-details')||q('.jobs-description__content')||q('.description__text')||document.body.innerText;var m=location.href.match(/currentJobId=(\\d+)/)||location.href.match(/jobs\\/view\\/(\\d+)/);var u=m?'https://www.linkedin.com/jobs/view/'+m[1]+'/':location.href;window.open('__BASE__/import#data='+encodeURIComponent(JSON.stringify({url:u,title:t,company:c,location:l,description:d.slice(0,25000)})),'_blank');})();"
+BOOKMARKLET = ("(function(){var q=function(s){var e=document.querySelector(s);return e?e.innerText.trim().split('\\n')[0].trim():''};"
+    "var m=location.href.match(/currentJobId=(\\d+)/)||location.href.match(/jobs\\/view\\/(\\d+)/);var id=m?m[1]:'';"
+    # title: the job's own heading on either layout, then the link to the open job, then the tab title
+    "var dt=document.title.replace(/^\\(\\d+\\)\\s*/,'').split(' | ');"
+    "var t=q('.job-details-jobs-unified-top-card__job-title')||q('.jobs-unified-top-card__job-title')||q('.top-card-layout__title')"
+    "||(id?q('.jobs-search__job-details a[href*=\"/jobs/view/'+id+'\"]')||q('main a[href*=\"/jobs/view/'+id+'\"]'):'')"
+    "||q('.jobs-details h1')||q('main h1')||q('h1')||(dt.length>1&&!/jobs/i.test(dt[0])?dt[0]:'');"
+    "t=t.replace(/\\s+with verification$/i,'');"
+    "var c=q('.job-details-jobs-unified-top-card__company-name')||q('.jobs-unified-top-card__company-name')||q('.topcard__org-name-link')"
+    "||q('.jobs-search__job-details a[href*=\"/company/\"]')||(dt.length>2?dt[1]:'');"
+    "var l=(q('.job-details-jobs-unified-top-card__primary-description-container')||q('.job-details-jobs-unified-top-card__tertiary-description-container')||q('.topcard__flavor--bullet')).split(' · ')[0];"
+    "var de=document.querySelector('#job-details')||document.querySelector('.jobs-description__content')||document.querySelector('.description__text');"
+    "var d=de?de.innerText.trim():document.body.innerText;"
+    "var u=id?'https://www.linkedin.com/jobs/view/'+id+'/':location.href;"
+    "window.open('__BASE__/import#data='+encodeURIComponent(JSON.stringify({url:u,title:t,company:c,location:l,description:d.slice(0,25000)})),'_blank');})();")
 
 
 @app.get("/import", response_class=HTMLResponse, dependencies=[Depends(require_auth)])
@@ -852,6 +866,12 @@ def import_job(url: str = Form(""), title: str = Form(""), company: str = Form("
 
     url, title, company, description = url.strip(), title.strip(), company.strip(), description.strip()
     pipeline = Pipeline(log=lambda m: None)
+    if not title and description and pipeline.llm is not None:
+        # The page didn't give a title (LinkedIn changes its layout often): read it from the posting.
+        try:
+            title = pipeline.llm.job_title(description, company)
+        except Exception:
+            title = ""
     board_hit = detect_from_url(url) if url else None
     if board_hit and board_hit[0] in FETCHERS:  # a supported board: treat it as a normal, applyable job
         ats, board, ext = board_hit

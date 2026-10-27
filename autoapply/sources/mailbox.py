@@ -11,6 +11,7 @@ import email
 import imaplib
 from dataclasses import dataclass
 from email.policy import default as default_policy
+from typing import Callable
 
 import httpx
 
@@ -48,12 +49,14 @@ def configured() -> str | None:
     return None
 
 
-def fetch(query: str, max_messages: int) -> list[Message]:
+def fetch(query: str, max_messages: int, skip: Callable[[str], bool] | None = None) -> list[Message]:
+    """The newest max_messages matching emails. With skip (Message-ID -> already handled?), emails
+    already handled don't count toward the limit, so a busy inbox can't hide older ones forever."""
     method = configured()
     if method == "gmail_api":
-        return _gmail_api(query, max_messages)
+        return _gmail_api(query, max_messages, skip)
     if method == "imap":
-        return _imap(query, max_messages)
+        return _imap(query, max_messages, skip)
     return []
 
 
@@ -82,15 +85,28 @@ def _walk(part: dict, out: dict[str, str]) -> None:
         _walk(child, out)
 
 
-def _gmail_api(query: str, max_messages: int) -> list[Message]:
+def _gmail_api(query: str, max_messages: int, skip: Callable[[str], bool] | None = None) -> list[Message]:
     token = gmail_access_token(*env.gmail_oauth)  # type: ignore[misc]
     headers = {"Authorization": f"Bearer {token}"}
     with httpx.Client(timeout=30, headers=headers) as http:
-        resp = http.get(f"{GMAIL_API}/messages", params={"q": query, "maxResults": max_messages})
+        resp = http.get(f"{GMAIL_API}/messages", params={"q": query, "maxResults": 500 if skip else max_messages})
         if resp.status_code != 200:
             raise MailboxError(f"Gmail search failed ({resp.status_code}): {resp.text[:200]}")
+        refs = resp.json().get("messages", [])
+        if skip:   # look at just the Message-ID first, so handled emails don't use up the limit
+            fresh = []
+            for ref in refs:
+                meta = http.get(f"{GMAIL_API}/messages/{ref['id']}",
+                                params={"format": "metadata", "metadataHeaders": "Message-ID"}).json()
+                mid = next((h["value"] for h in (meta.get("payload") or {}).get("headers", [])
+                            if h["name"].lower() == "message-id"), "")
+                if not skip(mid or ref["id"]):
+                    fresh.append(ref)
+                if len(fresh) >= max_messages:
+                    break
+            refs = fresh
         messages = []
-        for ref in resp.json().get("messages", []):
+        for ref in refs[:max_messages]:
             full = http.get(f"{GMAIL_API}/messages/{ref['id']}", params={"format": "full"}).json()
             payload = full.get("payload") or {}
             hdr = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
@@ -104,7 +120,7 @@ def _gmail_api(query: str, max_messages: int) -> list[Message]:
 
 # ------------------------------------------------------------------ IMAP
 
-def _imap(query: str, max_messages: int) -> list[Message]:
+def _imap(query: str, max_messages: int, skip: Callable[[str], bool] | None = None) -> list[Message]:
     host, user, password = env.imap  # type: ignore[misc]
     try:
         conn = imaplib.IMAP4_SSL(host)
@@ -126,7 +142,20 @@ def _imap(query: str, max_messages: int) -> list[Message]:
             status, data = conn.search(None, '(FROM "linkedin.com")')
         if status != "OK":
             raise MailboxError(f"IMAP search failed: {status}")
-        ids = data[0].split()[-max_messages:]
+        ids = data[0].split()
+        if skip and ids:
+            # Message-IDs only (cheap), so emails already handled don't count toward the limit.
+            ids = ids[-1000:]
+            status, parts = conn.fetch(b",".join(ids), "(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])")
+            seen = set()
+            for part in parts if status == "OK" else []:
+                if isinstance(part, tuple):
+                    seq = part[0].split()[0]
+                    mid = str(email.message_from_bytes(part[1]).get("Message-ID") or "").strip()
+                    if skip(mid or seq.decode()):
+                        seen.add(seq)
+            ids = [i for i in ids if i not in seen]
+        ids = ids[-max_messages:]
         messages = []
         for mid in reversed(ids):
             status, parts = conn.fetch(mid, "(BODY.PEEK[])")

@@ -198,6 +198,10 @@ class ReplyVerdict(Strict):
     summary: str        # one short sentence
 
 
+class JobTitle(Strict):
+    title: str
+
+
 class FieldAnswer(Strict):
     key: str
     values: list[str]
@@ -859,6 +863,16 @@ class LLM:
         out = self._call(task, f"id | title | company | location\n{lines}", LinkedInTriage, effort="low",
                          max_tokens=8000, model=self.scoring_model, with_profile=False)
         return {it.id: it for it in out.items if 0 <= it.id < len(postings)}
+
+    def job_title(self, description: str, company: str = "") -> str:
+        """The job title, read from a posting's text (for jobs sent without one)."""
+        out = self._call(
+            "Task: give the exact job title of the posting below, as the posting states it (e.g. \"Senior Revenue "
+            "Operations Manager\"). Title only: no company, location, or level you had to guess. If the text doesn't "
+            "state a title, return an empty string.",
+            f"<company>{company}</company>\n<posting>\n{description[:8000]}\n</posting>",
+            JobTitle, effort="low", max_tokens=1000, model=self.scoring_model, with_profile=False)
+        return out.title.strip()[:150]
 
     # -------------------------------------------------------------- reply emails
 
