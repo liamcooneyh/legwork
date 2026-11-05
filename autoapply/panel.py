@@ -165,7 +165,8 @@ class Panel:
         rank = ranking.index(me) + 1 if me in ranking else len(stack)
         note = next((n.note for n in out.notes if n.id == me), "")
         ahead = [next((n.note for n in out.notes if n.id == i), "") for i in out.advance[:ADVANCE] if i != me]
-        return {"job": job["id"], "company": job["company"], "title": job["title"], "reviewer": reviewer, "model": model,
+        return {"job": job["id"], "company": job["company"], "title": job["title"], "fit": job.get("panel_fit"),
+                "reviewer": reviewer, "model": model,
                 "slot": me, "rank": rank, "advanced": me in out.advance[:ADVANCE], "note": note, "picked_instead": ahead}
 
     def run(self, jobs: list[dict], variants: dict[str, dict[str, str]], workers: int = 8) -> list[dict]:
@@ -203,7 +204,8 @@ def summarize(rows: list[dict]) -> str:
     out += ["", "## By job", "", "| Job | " + " | ".join(variants) + " |", "|---|" + "---|" * len(variants)]
     for job in dict.fromkeys(r["job"] for r in ok):
         g = [r for r in ok if r["job"] == job]
-        out.append(f"| {g[0]['company']} — {g[0]['title'][:50]} | " +
+        fit = f" (fit {g[0]['fit']})" if g[0].get("fit") is not None else ""
+        out.append(f"| {g[0]['company']} — {g[0]['title'][:50]}{fit} | " +
                    " | ".join(stats([r for r in g if r["variant"] == v]) for v in variants) + " |")
     out += ["", "## By reviewer", "", "| Reviewer | " + " | ".join(variants) + " |", "|---|" + "---|" * len(variants)]
     for rev in dict.fromkeys(r["reviewer"] for r in ok):

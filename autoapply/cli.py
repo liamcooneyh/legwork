@@ -420,6 +420,23 @@ def cmd_panel(args) -> None:
     profile = profile_store.load()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    if args.rescore or args.qualified:
+        # Would the current targeting still pick these jobs? (Haiku, a fraction of a cent each)
+        from .filters import prefilter
+
+        cfg = load_config()
+        scorer = LLM(profile, cfg.llm.model, scoring_model=cfg.llm.scoring_model)
+        cutoff = db.setting_int("min_score", cfg.matching.min_score)
+        for j in jobs:
+            why = prefilter(j, cfg.search)
+            j["panel_fit"] = None if why else scorer.score(j, cfg.search.preferences)["score"]
+            j["panel_fit_note"] = why or ""
+            print(f"  {'pass' if (j['panel_fit'] or 0) >= cutoff else 'skip'} {j['panel_fit'] if j['panel_fit'] is not None else '-':>3}"
+                  f"  {j['company']} | {j['title'][:50]}  {why or ''}")
+        print(f"{sum((j['panel_fit'] or 0) >= cutoff for j in jobs)} of {len(jobs)} would still qualify (cutoff {cutoff}); "
+              f"scoring ${scorer.cost_usd():.2f}")
+        if args.qualified:
+            jobs = [j for j in jobs if (j["panel_fit"] or 0) >= cutoff]
     variants: dict[str, dict[str, str]] = {}
     if "sent" in args.variants:
         sent = {j["id"]: panel.sent_resume(j["id"]) for j in jobs}
@@ -532,6 +549,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--limit", type=int, default=10)
     p.add_argument("--variants", default="sent,new", help="sent (the resume that went out), new (tailored now), or both")
     p.add_argument("--out", default="build/panel-run")
+    p.add_argument("--rescore", action="store_true", help="re-score each job with the current targeting and report it")
+    p.add_argument("--qualified", action="store_true", help="re-score, then keep only jobs that would still qualify")
     p.set_defaults(fn=cmd_panel)
 
     p = sub.add_parser("helper", help="on your Mac: open drafts pre-filled for you to review and submit")
