@@ -403,6 +403,49 @@ def cmd_build_extension(args) -> None:
     print(f"Wrote {target}")
 
 
+def cmd_panel(args) -> None:
+    """Rank the candidate's resume against realistic competing applicants (see panel.py)."""
+    from . import db, panel, profile_store
+    from .llm import LLM
+    from .settings import load_config, load_dotenv
+
+    load_dotenv()
+    db.init()
+    if args.jobs:
+        ids = args.jobs.split(",")
+    else:
+        stage = "rejected" if args.rejected else None
+        ids = [j["id"] for j in db.tracked_jobs(stage)][: args.limit]
+    jobs = [dict(db.get_job(i)) for i in ids if db.get_job(i)]
+    profile = profile_store.load()
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    variants: dict[str, dict[str, str]] = {}
+    if "sent" in args.variants:
+        sent = {j["id"]: panel.sent_resume(j["id"]) for j in jobs}
+        variants["sent"] = {i: panel.resume_text(r, profile) for i, r in sent.items() if r}
+    if "new" in args.variants:
+        cfg = load_config()
+        llm = LLM(profile, cfg.llm.model, scoring_model=cfg.llm.scoring_model)
+        variants["new"] = {}
+        for j in jobs:
+            cached = out / "new" / f"{panel._safe(j['id'])}.json"
+            if cached.exists():
+                resume = panel.TailoredResume.model_validate_json(cached.read_text())
+            else:
+                resume = llm.tailor_resume(j)
+                cached.parent.mkdir(exist_ok=True)
+                cached.write_text(resume.model_dump_json(indent=1))
+            variants["new"][j["id"]] = panel.resume_text(resume, profile)
+        print(f"tailored new resumes: ${llm.cost_usd():.2f}")
+    p = panel.Panel(out_dir=out)
+    rows = p.run(jobs, variants)
+    (out / "reviews.json").write_text(json.dumps(rows, indent=1))
+    (out / "summary.md").write_text(panel.summarize(rows))
+    print(panel.summarize(rows).split("## By job")[0])
+    print(f"panel cost: ${p.cost:.2f}; full results in {out / 'summary.md'}")
+
+
 def cmd_helper(args) -> None:
     from . import helper
 
@@ -482,6 +525,14 @@ def main(argv: list[str] | None = None) -> None:
 
     p = sub.add_parser("build-extension", help="refresh the Chrome extension's copy of the form reader")
     p.set_defaults(fn=cmd_build_extension)
+
+    p = sub.add_parser("panel", help="rank your resume against realistic competing applicants (dev tool, costs a few dollars)")
+    p.add_argument("--rejected", action="store_true", help="use applications that were rejected (the backtest)")
+    p.add_argument("--jobs", default="", help="comma-separated job ids instead")
+    p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--variants", default="sent,new", help="sent (the resume that went out), new (tailored now), or both")
+    p.add_argument("--out", default="build/panel-run")
+    p.set_defaults(fn=cmd_panel)
 
     p = sub.add_parser("helper", help="on your Mac: open drafts pre-filled for you to review and submit")
     p.add_argument("--install", action="store_true", help="start the helper automatically at login")
