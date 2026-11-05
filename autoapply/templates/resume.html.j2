@@ -18,7 +18,6 @@
   ul { margin: 1.5pt 0 0 0; padding-left: 15pt; }
   li { margin: 0 0 1.5pt; }
   .sub { color: #444; }
-  .row.earlier { margin-top: 0.5pt; }
   li, p { text-wrap: pretty; }
   .skills div { margin: 1pt 0; }
   .summary { margin: 0; }
@@ -37,10 +36,9 @@
   <h2>Experience</h2>
   {% for role in r.experience %}
   <div class="row">
-    <div class="left">{{ role.title }}{% if role.company %} &middot; <span class="company">{{ role.company }}</span>{% endif %}{% if role.location %} <span class="loc">&middot; {{ role.location }}</span>{% endif %}{% if role.note %} <span class="loc">&middot; {{ role.note }}</span>{% endif %}</div>
-    <div class="dates">{{ role.start }} – {{ role.end }}</div>
+    <div class="left">{% for t in role.earlier_titles | reverse %}{{ t.title }} &rarr; {% endfor %}{{ role.title }}{% if role.company %} &middot; <span class="company">{{ role.company }}</span>{% endif %}{% if role.location %} <span class="loc">&middot; {{ role.location }}</span>{% endif %}{% if role.note %} <span class="loc">&middot; {{ role.note }}</span>{% endif %}</div>
+    <div class="dates">{{ role.earlier_titles[-1].start if role.earlier_titles else role.start }} – {{ role.end }}</div>
   </div>
-  {% for t in role.earlier_titles %}<div class="row earlier"><div class="left">{{ t.title }}</div><div class="dates">{{ t.start }} – {{ t.end }}</div></div>{% endfor %}
   {% if role.bullets %}<ul>{% for b in role.bullets %}<li>{{ b.text }}</li>{% endfor %}</ul>{% endif %}
   {% endfor %}
 
