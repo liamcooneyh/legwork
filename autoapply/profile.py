@@ -68,17 +68,31 @@ class EEO(BaseModel):
     transgender: str = "Decline"
 
 
+class EarlierTitle(BaseModel):
+    title: str
+    start: str
+    end: str
+
+
 class Experience(BaseModel):
     id: str
     company: str
     title: str
     location: str = ""
-    start: str
+    start: str              # when you joined the company
     end: str = "Present"
+    # Earlier titles at the same company, most recent first, so a promotion shows on the resume.
+    earlier_titles: list[EarlierTitle] = Field(default_factory=list)
+    note: str = ""          # a short fact under the role, e.g. "Role eliminated in a company-wide layoff"
     bullets: list[str] = Field(default_factory=list)
 
     def bullet_ids(self) -> list[tuple[str, str]]:
         return [(f"{self.id}.{i}", text) for i, text in enumerate(self.bullets)]
+
+    @property
+    def title_start(self) -> str:
+        """When the current title began."""
+        return self.earlier_titles[0].end if self.earlier_titles else self.start
 
 
 class Education(BaseModel):
@@ -101,6 +115,7 @@ class Project(BaseModel):
     name: str
     url: str = ""
     dates: str = ""
+    featured: bool = False      # always on the resume (tailoring picks its bullets but can't drop it)
     bullets: list[str] = Field(default_factory=list)
 
     def bullet_ids(self) -> list[tuple[str, str]]:

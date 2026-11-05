@@ -18,6 +18,7 @@
   ul { margin: 1.5pt 0 0 0; padding-left: 15pt; }
   li { margin: 0 0 1.5pt; }
   .sub { color: #444; }
+  .prior { font-style: italic; color: #444; margin-top: 0.5pt; }
   .skills div { margin: 1pt 0; }
   .summary { margin: 0; }
   a { color: inherit; text-decoration: underline; }
@@ -38,6 +39,7 @@
     <div class="left">{{ role.title }} &middot; <span class="company">{{ role.company }}</span>{% if role.location %} <span class="loc">&middot; {{ role.location }}</span>{% endif %}</div>
     <div class="dates">{{ role.start }} – {{ role.end }}</div>
   </div>
+  {% if role.earlier_titles or role.note %}<div class="prior">{% for t in role.earlier_titles %}{{ t.title }}, {{ t.start }} – {{ t.end }}{{ "; " if not loop.last }}{% endfor %}{% if role.earlier_titles and role.note %} &middot; {% endif %}{{ role.note }}</div>{% endif %}
   <ul>{% for b in role.bullets %}<li>{{ b.text }}</li>{% endfor %}</ul>
   {% endfor %}
 

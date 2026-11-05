@@ -20,9 +20,9 @@ from pathlib import Path
 from typing import Literal, TypeVar
 
 import anthropic
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from .profile import Profile
+from .profile import EarlierTitle, Profile
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -231,9 +231,11 @@ class ResumeRole(BaseModel):
     company: str
     title: str
     location: str
-    start: str
+    start: str              # when the current title began (the company start sits in earlier_titles)
     end: str
     bullets: list[ResumeBullet]
+    earlier_titles: list[EarlierTitle] = Field(default_factory=list)
+    note: str = ""
 
 
 class ResumeProject(BaseModel):
@@ -258,7 +260,7 @@ class TailoredResume(BaseModel):
             summary=profile.summary,
             experience=[
                 ResumeRole(id=e.id, company=e.company, title=e.title, location=e.location,
-                           start=e.start, end=e.end,
+                           start=e.title_start, end=e.end, earlier_titles=e.earlier_titles, note=e.note,
                            bullets=[ResumeBullet(text=t, source_ids=[i]) for i, t in e.bullet_ids()[: 4 if n < 2 else 2]])
                 for n, e in enumerate(profile.experience)
             ],
@@ -414,8 +416,9 @@ class LLM:
             "mix; 10-19 partly related; 0-9 a different function. A 'manager' title does not lower this unless the "
             "posting says the role manages people. Heavy software engineering is not a fit; light, applied "
             "software engineering is (see preferences).\n"
-            "- experience_level (0-10): 10 when the ask fits ~3-6 years; 7 about a year short or a bit senior; 4 two "
-            "years short; 0 three or more years short or 8+ years required. Count years in the posting's own function "
+            "- experience_level (0-10): compare the posting's ask with the candidate's full-time years as the "
+            "preferences state them (internships don't count): 10 when the ask is at or below them; 7 one year more; "
+            "4 two years more; 0 three or more years more, or 8+ years required. Count years in the posting's own function "
             "(\"5+ years in solutions engineering\" means years doing solutions engineering), not total career; years in "
             "a different function count about half.\n"
             "- location (0-10): 10 for US remote or New York City / Boston with any office days; 0 when it requires "
@@ -457,8 +460,9 @@ class LLM:
             "work the candidate does, in the posting's own terms and only as far as the profile shows it (e.g. "
             "\"Builds Salesforce reporting, pipeline analytics, and quoting tools for sales and finance teams.\" for "
             "a RevOps role), never a generic opener like \"Data professional with 4+ years\" and never a job title "
-            "he hasn't held (\"RevOps analyst with…\"). \"4+ years\" is his total experience: don't attach it to "
-            "one function or tool. Only facts from the profile; don't upgrade scope or seniority (administration is "
+            "he hasn't held (\"RevOps analyst with…\"). Don't state a number of years of experience anywhere in "
+            "the summary, and don't advertise promotions, praise, or soft traits there (the titles and bullets show "
+            "them; a recruiter discounts self-promotion). Only facts from the profile; don't upgrade scope or seniority (administration is "
             "not architecture, 'experienced with' is not 'daily use').\n"
             "- " + AI_EMPHASIS + "\n"
             "- experience: include EVERY role in the profile, by id, in the same order. For each role pick "
@@ -470,7 +474,8 @@ class LLM:
             "number, tool, and scope in the text must appear in the cited bullets; when in doubt, keep the "
             "original wording.\n"
             "- projects: for each profile project decide include true/false (include if relevant or the "
-            "page has room); same bullet rules as experience.\n"
+            "page has room; featured projects are always included, with the 1-2 bullets most relevant to this job); "
+            "same bullet rules as experience.\n"
             "- skills: every profile skill group by its exact name, with items reordered so the most "
             "relevant come first. Items must be copied verbatim from the profile; you may drop irrelevant "
             "items but never add new ones.\n"
@@ -512,7 +517,8 @@ class LLM:
         for e in p.experience:
             role = drafted_roles.get(e.id)
             experience.append(ResumeRole(
-                id=e.id, company=e.company, title=e.title, location=e.location, start=e.start, end=e.end,
+                id=e.id, company=e.company, title=e.title, location=e.location, start=e.title_start, end=e.end,
+                earlier_titles=e.earlier_titles, note=e.note,
                 bullets=clean(role.bullets if role else [], e.id, e.bullet_ids()),
             ))
 
@@ -520,7 +526,7 @@ class LLM:
         projects = []
         for pr in p.projects:
             d = drafted_projects.get(pr.id)
-            if d is not None and not d.include:
+            if d is not None and not d.include and not pr.featured:
                 continue
             projects.append(ResumeProject(
                 id=pr.id, name=pr.name, url=pr.url, dates=pr.dates,

@@ -122,3 +122,25 @@ def test_removal_only_edits_add_few_words():
     assert _added_words(before, "I built the CPQ tool. I like data.") == 0
     assert _added_words(before, "I built the CPQ tool, and I like data.") <= 2
     assert _added_words(before, before + " I also led a team of ten engineers at Google.") >= 10
+
+
+def test_promotions_layoff_notes_and_featured_projects_survive_tailoring():
+    data = PROFILE.model_dump()
+    data["experience"][0].update(earlier_titles=[{"title": "Junior Analyst", "start": "2022", "end": "2023"}],
+                                 note="Role eliminated in a layoff")
+    data["projects"] = [{"id": "app", "name": "App", "featured": True, "bullets": ["Built an app."]},
+                        {"id": "side", "name": "Side", "bullets": ["A side project."]}]
+    profile = Profile.model_validate(data)
+    draft = llm.TailoredResumeOut(
+        summary="Analyst.", experience=[llm.TailoredRole(id="acme", bullets=[B(["acme.0"], "Built SQL pipelines.")])],
+        projects=[llm.TailoredProject(id="app", include=False, bullets=[]),      # featured: can't be dropped
+                  llm.TailoredProject(id="side", include=False, bullets=[])],
+        skills=[])
+    resume = llm.LLM(profile, client=FakeClient([draft, llm.FactCheck(issues=[])])).tailor_resume(
+        {"company": "X", "title": "Analyst", "description": "SQL"})
+    acme = resume.experience[0]
+    assert acme.start == "2023"                     # the current title's start, not the company's
+    assert acme.earlier_titles[0].title == "Junior Analyst" and acme.note == "Role eliminated in a layoff"
+    assert [p.id for p in resume.projects] == ["app"]
+    master = llm.TailoredResume.from_profile(profile)
+    assert master.experience[0].start == "2023" and master.experience[0].earlier_titles

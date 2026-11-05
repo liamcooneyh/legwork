@@ -240,7 +240,7 @@ def salary_numbers(text: str) -> list[float]:
     return out
 
 
-SALARY_FLOOR = 125_000   # never ask below this when the posting's range allows more
+SALARY_FLOOR = 110_000   # never ask below this when the posting's range allows more
 SALARY_BAND = 30_000
 HOURS_PER_YEAR = 2080
 
