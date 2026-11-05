@@ -35,7 +35,7 @@ def _html_to_pdf(browser: Browser, html: str, out: Path) -> Path:
 
 
 def render_resume(browser: Browser, profile: Profile, resume: TailoredResume, out: Path, paper: str = "Letter",
-                  layout: str = "resume") -> Path:
+                  layout: str = "resume", options: dict | None = None) -> Path:
     pers = profile.personal
     contact: list[Markup] = [Markup.escape(x) for x in (pers.location.display(), pers.phone) if x]
     contact.append(Markup('<a href="mailto:{0}">{0}</a>').format(pers.email))
@@ -45,7 +45,7 @@ def render_resume(browser: Browser, profile: Profile, resume: TailoredResume, ou
     # Start generous and shrink the type a little at a time until it fits on one page, so the page is full.
     for font_pt, line_height in ((10.8, 1.32), (10.4, 1.3), (10.0, 1.27), (9.6, 1.24), (9.3, 1.2), (9.0, 1.17), (8.7, 1.15)):
         html = template.render(p=profile, r=resume, paper=paper, contact=contact, Markup=Markup,
-                               font_pt=font_pt, line_height=line_height)
+                               font_pt=font_pt, line_height=line_height, opt=options or {})
         _html_to_pdf(browser, html, out)
         if page_count(out) <= 1:
             break

@@ -328,6 +328,7 @@ class LLM:
         self._system_base = SYSTEM_BASE.format(name=profile.personal.full_name, profile=profile.to_prompt_yaml())
         self.usage = {"calls": 0, "input": 0, "cache_write": 0, "cache_read": 0, "output": 0}
         self._cost = 0.0
+        self.bullet_words = 35          # resume bullets stay under about this many words
 
     # List prices, USD per million tokens: (input, output). Cache writes ~1.25x input, reads ~0.05x.
     PRICES = {"claude-opus-5-5": (4.00, 20.00), "claude-sonnet-5-5": (2.00, 10.00), "claude-haiku-5-5": (0.10, 0.50)}
@@ -470,7 +471,8 @@ class LLM:
             "tense. Keep the voice confident and active: lead with what was built or done and what it did, never flat "
             "or apologetic. Reword a bullet only "
             "to tighten it or to use the posting's term for the same thing; don't add tool names or stack lists to "
-            "match the posting, and keep each bullet to about two lines.\n"
+            "match the posting, and keep each bullet under about " + str(self.bullet_words) + " words: cut stack details "
+            "before cutting what was built or what it did.\n"
             "- projects: for each profile project decide include true/false (include if relevant or the "
             "page has room; featured projects are always included, with the 1-2 bullets most relevant to this job); "
             "list projects most relevant to this job first; same bullet rules as experience.\n"
