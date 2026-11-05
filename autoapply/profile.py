@@ -84,6 +84,8 @@ class Experience(BaseModel):
     # Earlier titles at the same company, most recent first, so a promotion shows on the resume.
     earlier_titles: list[EarlierTitle] = Field(default_factory=list)
     note: str = ""          # a short fact under the role, e.g. "Role eliminated in a company-wide layoff"
+    on_resume: bool = True  # False keeps it out of resumes (still a fact for form answers)
+    lead_bullet: int | None = None   # this bullet always leads the role on a resume (index into bullets)
     bullets: list[str] = Field(default_factory=list)
 
     def bullet_ids(self) -> list[tuple[str, str]]:

@@ -262,7 +262,7 @@ class TailoredResume(BaseModel):
                 ResumeRole(id=e.id, company=e.company, title=e.title, location=e.location,
                            start=e.title_start, end=e.end, earlier_titles=e.earlier_titles, note=e.note,
                            bullets=[ResumeBullet(text=t, source_ids=[i]) for i, t in e.bullet_ids()[: 4 if n < 2 else 2]])
-                for n, e in enumerate(profile.experience)
+                for n, e in enumerate(e for e in profile.experience if e.on_resume)
             ],
             projects=[
                 ResumeProject(id=p.id, name=p.name, url=p.url, dates=p.dates,
@@ -418,7 +418,8 @@ class LLM:
             "software engineering is (see preferences).\n"
             "- experience_level (0-10): compare the posting's ask with the candidate's full-time years as the "
             "preferences state them (internships don't count): 10 when the ask is at or below them; 7 one year more; "
-            "4 two years more; 0 three or more years more, or 8+ years required. Count years in the posting's own function "
+            "4 two years more; 0 three or more years more, or 8+ years required. A Senior, Sr., Lead, or Staff title "
+            "with no years stated asks about 5 years. Count years in the posting's own function "
             "(\"5+ years in solutions engineering\" means years doing solutions engineering), not total career; years in "
             "a different function count about half.\n"
             "- location (0-10): 10 for US remote or New York City / Boston with any office days; 0 when it requires "
@@ -465,7 +466,7 @@ class LLM:
             "them; a recruiter discounts self-promotion). Only facts from the profile; don't upgrade scope or seniority (administration is "
             "not architecture, 'experienced with' is not 'daily use').\n"
             "- " + AI_EMPHASIS + "\n"
-            "- experience: include EVERY role in the profile, by id, in the same order. For each role pick "
+            "- experience: include EVERY role in the profile that is on the resume (on_resume true), by id, in the same order. For each role pick "
             "the most relevant 1-5 bullets. Each output bullet must cite the profile bullet id(s) it is "
             "based on in source_ids (ids look like 'acme.0'), using only ids from that same role. "
             "For the most relevant bullets, reword them to lead with what this posting cares about and to use "
@@ -477,8 +478,8 @@ class LLM:
             "page has room; featured projects are always included, with the 1-2 bullets most relevant to this job); "
             "same bullet rules as experience.\n"
             "- skills: every profile skill group by its exact name, with items reordered so the most "
-            "relevant come first. Items must be copied verbatim from the profile; you may drop irrelevant "
-            "items but never add new ones.\n"
+            "relevant come first. Items must be copied verbatim from the profile; drop the items this job has no "
+            "use for (a short, relevant list reads better than every tool) but never add new ones.\n"
             "Keep the whole resume to roughly one page (at most about 14 bullets in total).\n"
             "- " + TOOL_NAMING + " In skills, list the most relevant items first."
         )
@@ -515,11 +516,18 @@ class LLM:
         drafted_roles = {r.id: r for r in draft.experience}
         experience = []
         for e in p.experience:
+            if not e.on_resume:
+                continue
             role = drafted_roles.get(e.id)
+            kept = clean(role.bullets if role else [], e.id, e.bullet_ids())
+            if e.lead_bullet is not None and e.lead_bullet < len(e.bullets):
+                lead_id = f"{e.id}.{e.lead_bullet}"
+                lead = next((b for b in kept if lead_id in b.source_ids), None) or \
+                    ResumeBullet(text=e.bullets[e.lead_bullet], source_ids=[lead_id])
+                kept = [lead] + [b for b in kept if b is not lead]
             experience.append(ResumeRole(
                 id=e.id, company=e.company, title=e.title, location=e.location, start=e.title_start, end=e.end,
-                earlier_titles=e.earlier_titles, note=e.note,
-                bullets=clean(role.bullets if role else [], e.id, e.bullet_ids()),
+                earlier_titles=e.earlier_titles, note=e.note, bullets=kept,
             ))
 
         drafted_projects = {pr.id: pr for pr in draft.projects}
@@ -569,7 +577,8 @@ class LLM:
             "Task: fact-check rewritten resume text against its sources. For each item, flag it if the "
             "rewritten text claims anything its sources do not support: a new tool, technology, metric, "
             "scope, seniority, responsibility, outcome, or domain. Rewording and condensing are fine; "
-            "emphasis is fine; added substance is not. Leaving things out is never a problem: don't flag omissions. "
+            "emphasis is fine; added substance is not. Leaving things out is never a problem: don't flag omissions, "
+            "and if your reasoning ends with something being supported, don't list it. "
             "For the summary, the source is the whole candidate profile; opening with the kind of work the job "
             "does is fine when the profile shows him doing that work (flag a job title he hasn't held, or years "
             "attached to a function or tool beyond what the profile shows), and a fix keeps that opening. "
