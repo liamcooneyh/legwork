@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: {{ paper }}; margin: 0.55in 0.65in; }
+  * { box-sizing: border-box; }
+  body { font-family: "Avenir Next", "Inter", "Helvetica Neue", "Liberation Sans", Arial, sans-serif; color: #1d1d1f;
+         font-size: {{ font_pt }}pt; line-height: {{ line_height }}; margin: 0; }
+  h1 { font-size: 22pt; font-weight: 600; letter-spacing: -0.2pt; margin: 0 0 2pt; }
+  .contact { font-size: 0.92em; color: #555; margin-bottom: 6pt; }
+  .contact a { color: inherit; text-decoration: none; }
+  h2 { font-size: 0.82em; font-weight: 600; text-transform: uppercase; letter-spacing: 1.4pt; color: #6b6b70; margin: 11pt 0 3pt; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; }
+  .role { margin-top: 6pt; }
+  .title { font-weight: 600; }
+  .muted { color: #555; }
+  .dates { white-space: nowrap; margin-left: 12pt; color: #6b6b70; }
+  ul { margin: 2pt 0 0; padding-left: 13pt; }
+  li { margin: 0 0 2pt; }
+  li, p { text-wrap: pretty; }
+  p.summary { margin: 0; }
+  .skills div { margin: 1.5pt 0; }
+  .skills b { font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>{{ p.personal.full_name }}</h1>
+  <div class="contact">{{ contact | join(Markup("&nbsp;&nbsp;/&nbsp;&nbsp;")) }}</div>
+
+  {% if r.summary %}<p class="summary">{{ r.summary }}</p>{% endif %}
+
+  <h2>Experience</h2>
+  {% for role in r.experience %}
+  <div class="role">
+    <div class="row">
+      <div><span class="title">{% for t in role.earlier_titles | reverse %}{{ t.title }} &rarr; {% endfor %}{{ role.title }}</span>{% if role.company %}<span class="muted">, {{ role.company }}{% if role.location %} · {{ role.location }}{% endif %}</span>{% endif %}</div>
+      <div class="dates">{{ role.earlier_titles[-1].start if role.earlier_titles else role.start }} – {{ role.end }}</div>
+    </div>
+    {% if role.bullets %}<ul>{% for b in role.bullets %}<li>{{ b.text }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  {% endfor %}
+
+  {% if r.projects %}
+  <h2>Projects</h2>
+  {% for proj in r.projects %}
+  <div class="role">
+    <div class="row">
+      <div><span class="title">{{ proj.name }}</span>{% if proj.url %}<span class="muted">, {{ proj.url | display_url }}</span>{% endif %}</div>
+      <div class="dates">{{ proj.dates }}</div>
+    </div>
+    <ul>{% for b in proj.bullets %}<li>{{ b.text }}</li>{% endfor %}</ul>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if r.skills %}
+  <h2>Skills</h2>
+  <div class="skills">{% for g in r.skills if g.items %}<div><b>{{ g.name }}</b>&nbsp;&nbsp;{{ g.items | join(", ") }}</div>{% endfor %}</div>
+  {% endif %}
+
+  {% if p.education %}
+  <h2>Education</h2>
+  {% for ed in p.education %}
+  <div class="row"><div><span class="title">{{ ed.degree }}</span><span class="muted">, {{ ed.school }}</span></div><div class="dates">{{ ed.end }}</div></div>
+  {% if ed.details %}<div class="muted">{{ ed.details }}</div>{% endif %}
+  {% endfor %}
+  {% endif %}
+</body>
+</html>
