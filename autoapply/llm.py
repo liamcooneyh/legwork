@@ -476,7 +476,7 @@ class LLM:
             "original wording.\n"
             "- projects: for each profile project decide include true/false (include if relevant or the "
             "page has room; featured projects are always included, with the 1-2 bullets most relevant to this job); "
-            "same bullet rules as experience.\n"
+            "list projects most relevant to this job first; same bullet rules as experience.\n"
             "- skills: every profile skill group by its exact name, with items reordered so the most "
             "relevant come first. Items must be copied verbatim from the profile; drop the items this job has no "
             "use for (a short, relevant list reads better than every tool) but never add new ones.\n"
@@ -531,8 +531,9 @@ class LLM:
             ))
 
         drafted_projects = {pr.id: pr for pr in draft.projects}
+        order = {pr_id: n for n, pr_id in enumerate(drafted_projects)}   # the draft lists the most relevant first
         projects = []
-        for pr in p.projects:
+        for pr in sorted(p.projects, key=lambda x: order.get(x.id, len(order))):
             d = drafted_projects.get(pr.id)
             if d is not None and not d.include and not pr.featured:
                 continue
