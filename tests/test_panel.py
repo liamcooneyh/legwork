@@ -35,7 +35,7 @@ class FakeClient:
     def _parse(self, *, model, output_format, messages, **_):
         if output_format is panel.Field:
             self.field_calls += 1
-            out = panel.Field(applicants=[panel.Applicant(sketch=f"s{i}", resume=f"OTHER {i}") for i in range(9)])
+            out = panel.Field(applicants=[panel.Applicant(tier=["strong", "adjacent", "partial", "senior", "weak"][i % 5], sketch=f"s{i}", resume=f"OTHER {i}") for i in range(9)])
         else:
             content = messages[0]["content"]
             ids = panel.LETTERS[:10]
@@ -65,3 +65,4 @@ def test_panel_ranks_variants_against_the_same_field(tmp_path):
         [JOB], {"old": {JOB["id"]: text}}, workers=1)
     assert client2.field_calls == 0                                           # reused the saved field
     assert rows[0]["rank"] == 6 and not rows[0]["advanced"] and len(rows[0]["picked_instead"]) == 2
+    assert len(rows[0]["beaten_by"]) == 5 and "Is the panel sane?" in panel.summarize(rows)

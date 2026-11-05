@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Callable
 
 import anthropic
+from typing import Literal
+
 from pydantic import BaseModel
 
 from . import db
@@ -50,6 +52,7 @@ REVIEWERS = {
 
 
 class Applicant(Strict):
+    tier: Literal["strong", "adjacent", "partial", "senior", "weak"]   # never shown to reviewers
     sketch: str     # one line: who this applicant is (for the report, never shown to reviewers)
     resume: str     # plain-text resume, no name or contact details
 
@@ -136,7 +139,8 @@ class Panel:
             "senior than the role; and one weak, spray-and-pray applicant. Real people have flaws, so give some of them a "
             "short tenure, a gap, or vague bullets. Each resume is plain text in this layout: the word CANDIDATE, a city, "
             "SUMMARY, EXPERIENCE (title · company · location | dates, then bullets), optional PROJECTS, EDUCATION, SKILLS; "
-            "about 250-400 words; no names, emails, phone numbers, or links. For each, also give a one-line sketch of who it is.")
+            "about 250-400 words; no names, emails, phone numbers, or links. For each, also give its tier (strong, adjacent, "
+            "partial, senior, or weak) and a one-line sketch of who it is.")
         content = f"<job_posting>\n{job['company']} — {job['title']}\n\n{(job.get('description') or '')[:12000]}\n</job_posting>"
         field = self._parse("claude-sonnet-5-5", task, content, Field, 16000).applicants[: STACK - 1]
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,10 +152,11 @@ class Panel:
         two versions of the candidate's resume face the same order."""
         model, persona = self.reviewers[reviewer]
         rng = random.Random(int(hashlib.sha256(f"{job['id']}|{reviewer}".encode()).hexdigest(), 16))
-        others = [a.resume for a in field]
+        others = list(field)
         rng.shuffle(others)
         slot = rng.randrange(len(others) + 1)
-        stack = others[:slot] + [candidate] + others[slot:]
+        stack = [a.resume for a in others[:slot]] + [candidate] + [a.resume for a in others[slot:]]
+        tiers = [a.tier for a in others[:slot]] + ["candidate"] + [a.tier for a in others[slot:]]
         ids = LETTERS[: len(stack)]
         me = ids[slot]
         content = (f"<job_posting>\n{job['company']} — {job['title']}\n\n{(job.get('description') or '')[:12000]}\n</job_posting>\n\n"
@@ -165,9 +170,13 @@ class Panel:
         rank = ranking.index(me) + 1 if me in ranking else len(stack)
         note = next((n.note for n in out.notes if n.id == me), "")
         ahead = [next((n.note for n in out.notes if n.id == i), "") for i in out.advance[:ADVANCE] if i != me]
+        tier_of = dict(zip(ids, tiers))
+        tier_ranks = {t: [ranking.index(i) + 1 for i in ids if tier_of[i] == t and i in ranking] for t in set(tiers) - {"candidate"}}
+        beaten_by = [tier_of[i] for i in ranking[: ranking.index(me)]] if me in ranking else []
         return {"job": job["id"], "company": job["company"], "title": job["title"], "fit": job.get("panel_fit"),
                 "reviewer": reviewer, "model": model,
-                "slot": me, "rank": rank, "advanced": me in out.advance[:ADVANCE], "note": note, "picked_instead": ahead}
+                "slot": me, "rank": rank, "advanced": me in out.advance[:ADVANCE], "note": note, "picked_instead": ahead,
+                "tier_ranks": tier_ranks, "beaten_by": beaten_by}
 
     def run(self, jobs: list[dict], variants: dict[str, dict[str, str]], workers: int = 8) -> list[dict]:
         """variants: name -> {job_id: candidate resume text}. Every variant faces the same field and order."""
@@ -211,6 +220,23 @@ def summarize(rows: list[dict]) -> str:
     for rev in dict.fromkeys(r["reviewer"] for r in ok):
         out.append(f"| {rev} | " + " | ".join(stats([r for r in ok if r["reviewer"] == rev and r["variant"] == v])
                                              for v in variants) + " |")
+    out += ["", "## Who ranked above the candidate", "",
+            "Competitor tiers: strong (exact fit), adjacent, partial, senior (overqualified), weak.", ""]
+    for v in variants:
+        g = [r for r in ok if r["variant"] == v]
+        counts: dict[str, int] = {}
+        for r in g:
+            for t in r.get("beaten_by", []):
+                counts[t] = counts.get(t, 0) + 1
+        out.append(f"- **{v}:** " + (", ".join(f"{t} {n}" for t, n in sorted(counts.items(), key=lambda x: -x[1])) or "nobody"))
+    out += ["", "## Is the panel sane?", "", "Average rank of each competitor tier (strong should be near the top, weak near the bottom).", ""]
+    tier_all: dict[str, list[int]] = {}
+    for r in ok:
+        for t, ranks in r.get("tier_ranks", {}).items():
+            tier_all.setdefault(t, []).extend(ranks)
+    for t in ("strong", "adjacent", "partial", "senior", "weak"):
+        if tier_all.get(t):
+            out.append(f"- {t}: average rank {sum(tier_all[t]) / len(tier_all[t]):.1f}")
     out += ["", "## What reviewers said about the candidate", ""]
     for r in ok:
         out.append(f"- [{r['variant']}] {r['company']} / {r['reviewer']}: rank {r['rank']}"
