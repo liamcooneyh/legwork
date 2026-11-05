@@ -456,15 +456,8 @@ class LLM:
     def tailor_resume(self, job: dict) -> TailoredResume:
         task = (
             "Task: tailor the candidate's one-page resume for the job below.\n"
-            "- summary: 2-3 sentences rewritten to foreground what this job needs (alternate_summaries in the "
-            "profile show framings the candidate has used before). Open with the work this role does, described as "
-            "work the candidate does, in the posting's own terms and only as far as the profile shows it (e.g. "
-            "\"Builds Salesforce reporting, pipeline analytics, and quoting tools for sales and finance teams.\" for "
-            "a RevOps role), never a generic opener like \"Data professional with 4+ years\" and never a job title "
-            "he hasn't held (\"RevOps analyst with…\"). Don't state a number of years of experience anywhere in "
-            "the summary, and don't advertise promotions, praise, or soft traits there (the titles and bullets show "
-            "them; a recruiter discounts self-promotion). Only facts from the profile; don't upgrade scope or seniority (administration is "
-            "not architecture, 'experienced with' is not 'daily use').\n"
+            "- summary: copy, word for word, the one summary from the profile (summary or alternate_summaries) that "
+            "best fits this job. Never write a new one.\n"
             "- " + AI_EMPHASIS + "\n"
             "- experience: include EVERY role in the profile that is on the resume (on_resume true), by id, in the same order. For each role pick "
             "the most relevant 1-5 bullets. Each output bullet must cite the profile bullet id(s) it is "
@@ -473,14 +466,14 @@ class LLM:
             "the posting's own terms where those terms truthfully describe the same work (e.g. 'CRM' vs "
             "'Salesforce' only if accurate). Tighten wordy bullets. You may merge two bullets. Every claim, "
             "number, tool, and scope in the text must appear in the cited bullets; when in doubt, keep the "
-            "original wording.\n"
+            "original wording. Write every bullet in the past tense, including the current role. Reword a bullet only "
+            "to tighten it or to use the posting's term for the same thing; don't add tool names or stack lists to "
+            "match the posting, and keep each bullet to about two lines.\n"
             "- projects: for each profile project decide include true/false (include if relevant or the "
             "page has room; featured projects are always included, with the 1-2 bullets most relevant to this job); "
             "list projects most relevant to this job first; same bullet rules as experience.\n"
-            "- skills: every profile skill group by its exact name, with items reordered so the most "
-            "relevant come first. Items must be copied verbatim from the profile; drop the items this job has no "
-            "use for (a short, relevant list reads better than every tool) but never add new ones.\n"
-            "Keep the whole resume to roughly one page (at most about 14 bullets in total).\n"
+            "- skills: return the profile's skill groups unchanged (the resume uses them as written).\n"
+            "Keep the whole resume to one page (at most about 12 bullets in total).\n"
             "- " + TOOL_NAMING + " In skills, list the most relevant items first."
         )
         content = (
@@ -542,30 +535,24 @@ class LLM:
                 bullets=clean(d.bullets if d else [], pr.id, pr.bullet_ids()),
             ))
 
-        allowed = {g.name: {i.lower(): i for i in g.items} for g in p.skills}
-        skills = []
-        seen_groups = set()
-        for g in draft.skills:
-            if g.name not in allowed or g.name in seen_groups:
-                continue
-            seen_groups.add(g.name)
-            items = [allowed[g.name][i.lower()] for i in g.items if i.lower() in allowed[g.name]]
-            skills.append(TailoredSkillGroup(name=g.name, items=items or list(allowed[g.name].values())))
-        for g in p.skills:
-            if g.name not in seen_groups:
-                skills.append(TailoredSkillGroup(name=g.name, items=list(g.items)))
+        # The skills section is the profile's, as written: regrouping it per job made it a keyword list.
+        skills = [TailoredSkillGroup(name=g.name, items=list(g.items)) for g in p.skills]
 
-        summary = draft.summary.strip() or p.summary
-        profile_numbers = _numbers(p.to_prompt_yaml())
-        if not _numbers(summary) <= profile_numbers:
-            notes.append("reverted summary that introduced numbers")
-            summary = p.summary
+        # The summary is one the candidate approved, word for word; rewriting it per job read as stack soup.
+        approved = [x for x in [p.summary, *p.alternate_summaries] if x.strip()]
+        summary = " ".join(draft.summary.split())
+        if summary not in [" ".join(x.split()) for x in approved]:
+            import difflib
+
+            match = difflib.get_close_matches(summary, approved, n=1, cutoff=0)
+            notes.append("summary wasn't one of the approved ones; used the closest")
+            summary = match[0] if match else p.summary
 
         return TailoredResume(summary=summary, experience=experience, projects=projects, skills=skills, notes=notes)
 
     def _fact_check_resume(self, resume: TailoredResume) -> None:
         bullets = self.profile.all_bullets()
-        items: dict[str, tuple[ResumeBullet | None, str]] = {"summary": (None, resume.summary)}
+        items: dict[str, tuple[ResumeBullet | None, str]] = {}   # the summary is pre-approved, not rewritten
         for section in (*resume.experience, *resume.projects):
             for n, b in enumerate(section.bullets):
                 if not b.reverted:

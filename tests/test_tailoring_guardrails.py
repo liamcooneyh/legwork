@@ -58,7 +58,8 @@ def test_tailoring_keeps_facts_from_profile():
     assert acme.bullets[1].text == "Maintained Tableau dashboards." and acme.bullets[1].reverted
     assert len(acme.bullets) == 2
     assert [b.text for b in beta.bullets] == ["Cleaned data in Excel."]
-    assert resume.skills[0].items == ["Tableau", "SQL"]
+    assert resume.skills[0].items == ["SQL", "Tableau", "Excel"]      # the profile's skills, as written
+    assert resume.summary == PROFILE.summary                          # a rewritten summary falls back to an approved one
 
 
 def test_fact_check_reverts_flagged_bullets():
