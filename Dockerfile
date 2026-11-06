@@ -18,6 +18,9 @@ RUN mkdir autoapply && touch autoapply/__init__.py \
     && playwright install --with-deps chromium \
     && pip uninstall -y autoapply
 
+# A Helvetica-metric font, so resumes render on the server the way they look on a Mac.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-texgyre && rm -rf /var/lib/apt/lists/*
+
 COPY autoapply ./autoapply
 RUN pip install --no-deps .
 
