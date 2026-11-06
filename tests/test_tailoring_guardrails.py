@@ -83,12 +83,12 @@ def test_fact_check_reverts_flagged_bullets():
 
 def test_requests_use_fallbacks_and_cached_profile():
     part = lambda n: llm.PartScore(points=n, reason="")
-    client = FakeClient([llm.FitBreakdown(role_family=part(150), experience_level=part(10), location=part(10), pay=part(5),
+    client = FakeClient([llm.FitBreakdown(role_family=part(150), experience_level=part(10), location=part(10), pay=part(5), company_stage=part(5),
                                           requirements=[], summary="", dealbreakers=[])])
     model = llm.LLM(PROFILE, client=client, scoring_model="claude-haiku-5-5")
     result = model.score({"company": "X", "title": "Y"}, "")
     call = client.calls[0]
-    # Parts are capped and the total is added up in code: 30 + 24 (no required items listed) + 15 + 10 + 10 + 5.
+    # Parts are capped and the total is added up in code: 30 + 24 (no required items listed) + 10 + 10 + 10 + 5 + 5.
     assert result["parts"]["role_family"]["points"] == 30 and result["score"] == 94
     assert call["model"] == "claude-haiku-5-5" and "fallbacks" not in call  # Haiku has no server-side fallback
 

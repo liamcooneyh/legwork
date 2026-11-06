@@ -1198,3 +1198,119 @@ Enertiv
 Cherre
 Reonomy
 Crexi
+
+# --- YC startups (2021+, hiring in NYC, Boston, or US-remote, under 150 people)
+Albedo
+Attain
+Axle
+Coast
+Dots 💸
+Gigs
+Haven
+Hazel
+Morph
+Surface Labs
+Aleph
+Epsilon3
+Fours
+Gridware
+Prosper
+Smartcuts
+Agave
+AiPrise
+Airgoods
+Ambral
+AnswerThis
+Aragorn AI
+Artisan
+Asimov
+Auctor
+authzed
+Avallon AI
+Avoca
+Beyond Reach Labs
+Blee
+Broccoli AI
+Camber
+Cambio
+Chariot
+Cinder
+Claim Health
+ClaimSorted
+Clarion
+Clearly AI
+Codes Health
+Concourse
+Conduit
+Confido
+Decoda Health
+DiligenceSquared
+Ekho
+Eloquent AI
+Eventual
+Fernstone
+FINNY AI
+Firecrawl
+FirstWork
+Fleetline
+Flint
+FlutterFlow
+Fortuna Health
+Garage
+GovDash
+GovEagle
+Great Question
+Greenboard
+HockeyStack
+Hyperbound
+Infisical
+Inkeep
+Interfere
+Invert
+Kivo Health
+Klarify
+Kodex
+Legion Health
+LiveFlow
+Mach9
+Magic Patterns
+Mem0
+Metriport
+Moss
+Nash
+Novig
+Odys Aviation
+OffDeal
+Offstream
+OneSchema
+Output Labs
+Parallel Bio
+PermitFlow
+Pocket
+PointOne
+Popl
+Quicknode
+Quindar
+Reacher
+Reality Defender
+Revise Robotics
+Rollstack
+Ryvn
+Serif Health
+Shepherd
+SigNoz
+Spade
+SpruceID
+Spur
+Stepful
+Svix
+Sweetspot
+Tank Payments
+Tavus
+Topline Pro
+Triomics
+Tuesday Labs
+Ultra
+Vector
+Veritus
+Zensors

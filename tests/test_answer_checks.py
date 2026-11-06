@@ -86,14 +86,14 @@ def test_score_is_added_up_from_parts():
     from autoapply import llm
     part = lambda n, r="": llm.PartScore(points=n, reason=r)
     b = llm.FitBreakdown(
-        role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), summary="s", dealbreakers=[],
+        role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), company_stage=part(5), summary="s", dealbreakers=[],
         requirements=[llm.Requirement(text="SQL", kind="required", status="met", evidence="Acme", hard=False),
                       llm.Requirement(text="Jira", kind="required", status="partly", evidence="Globex", hard=False),
                       llm.Requirement(text="Looker", kind="preferred", status="not_met", evidence="not shown", hard=False)])
     out = llm.score_from_breakdown(b)
     assert out["parts"]["required"]["points"] == 22   # (1 + 0.5) / 2 of 30
     assert out["parts"]["preferred"]["points"] == 0
-    assert out["score"] == 28 + 22 + 0 + 10 + 10 + 5
+    assert out["score"] == 28 + 22 + 0 + 10 + 10 + 5 + 5   # the last 5 is company stage
     assert any("Looker" in g for g in out["gaps"]) and any("SQL" in st for st in out["strengths"])
 
 
@@ -153,7 +153,7 @@ def test_unmet_hard_requirements_cost_real_points():
     from autoapply import llm
     part = lambda n: llm.PartScore(points=n, reason="")
     req = lambda t, st, hard: llm.Requirement(text=t, kind="required", status=st, evidence="", hard=hard)
-    base = dict(role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), summary="s", dealbreakers=[])
+    base = dict(role_family=part(28), experience_level=part(10), location=part(10), pay=part(5), company_stage=part(5), summary="s", dealbreakers=[])
     soft = llm.score_from_breakdown(llm.FitBreakdown(**base, requirements=[req("SQL", "met", False), req("Stakeholders", "not_met", False)]))
     hard = llm.score_from_breakdown(llm.FitBreakdown(**base, requirements=[req("SQL", "met", False), req("Xactly", "not_met", True)]))
     assert soft["parts"]["required"]["points"] == 15 and hard["parts"]["required"]["points"] == 11

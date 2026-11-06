@@ -563,7 +563,7 @@ def job_detail(request: Request, job_id: str, msg: str = ""):
             needs = [a for a in json.loads(draft["answers_json"] or "[]") if a.get("source") == "unanswered"]
     return TEMPLATES.TemplateResponse(request, "job.html", _ctx(
         request, job=job, applications=applications, events=db.events_for(job_id), stages=db.TRACK_STAGES, msg=msg,
-        needs=needs, has_draft=has_draft, fill_url=fill_url,
+        needs=needs, has_draft=has_draft, fill_url=fill_url, outreach=db.kv_json(f"outreach:{job_id}", None),
         preparing_now=job_id in _preparing_now or prep_progress(job_id) is not None,
         other_roles=[r for r in db.company_roles(job["company"]) if r["id"] != job_id],
     ))
@@ -592,6 +592,25 @@ def job_action(job_id: str, action: str = Form(...), back: str = Form("")):
 
 
 _preparing_now: set[str] = set()
+
+
+@app.post("/job/{job_id:path}/outreach", dependencies=[Depends(require_auth)])
+def job_outreach(job_id: str):
+    """Draft a short note to a person at the company (who to contact, a connection note, a message)."""
+    job = db.get_job(job_id)
+    if job is None:
+        raise HTTPException(404)
+    llm = Pipeline(log=lambda m: None).llm
+    if llm is None:
+        msg = "Set ANTHROPIC_API_KEY to draft outreach"
+    else:
+        try:
+            out = llm.outreach(dict(job))
+            db.kv_set_json(f"outreach:{job_id}", {**out.model_dump(), "at": db.now(), "cost": round(llm.cost_usd(), 3)})
+            msg = "Outreach drafted"
+        except Exception as e:
+            msg = f"Couldn't draft outreach: {str(e)[:160]}"
+    return RedirectResponse(f"/job/{quote(job_id, safe='')}?msg={quote(msg)}#outreach", status_code=303)
 
 
 @app.post("/job/{job_id:path}/prepare-now", dependencies=[Depends(require_auth)])

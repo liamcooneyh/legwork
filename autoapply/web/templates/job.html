@@ -153,6 +153,47 @@
 </table></div>
 {% endif %}
 
+{% if job.status in ('ready', 'needs_manual', 'matched', 'applied', 'manual_linkedin', 'held') %}
+<h2 id="outreach" style="scroll-margin-top:80px">Reach a person</h2>
+<div class="panel outreach">
+  {% if outreach %}
+  <p style="margin-top:0"><b>Who to contact:</b> {{ outreach.contact_titles | join(", or ") }}<br>
+    <span class="muted" style="font-size:14px">{{ outreach.why_them }}</span></p>
+  <p style="font-size:14px">{% for t in outreach.contact_titles %}<a href="https://www.linkedin.com/search/results/people/?keywords={{ (job.company ~ ' ' ~ t) | urlencode }}" target="_blank" rel="noopener">Find the {{ t }} on LinkedIn ↗</a>{{ " · " if not loop.last }}{% endfor %}</p>
+  {% if outreach.linkedin_note %}
+  <label class="muted" style="font-size:13px">Connection note <span data-count-for="o-note"></span></label>
+  <textarea id="o-note" rows="3" maxlength="300">{{ outreach.linkedin_note }}</textarea>
+  <div class="bar"><button type="button" data-copy="o-note">Copy note</button></div>
+  {% endif %}
+  {% if outreach.message %}
+  <label class="muted" style="font-size:13px">Message (after they connect, or by email)</label>
+  <textarea id="o-msg" rows="7">{{ outreach.message }}</textarea>
+  <div class="bar"><button type="button" data-copy="o-msg">Copy message</button>
+    <form class="inline" method="post" action="/job/{{ job.id | q }}/outreach"><button title="Write a fresh version (~5¢)">Rewrite</button></form></div>
+  {% endif %}
+  {% else %}
+  <p class="muted" style="margin-top:0">A short note to a founder or the hiring manager gets read when a resume in a pile doesn't.
+    This drafts who to contact, a connection note, and a short message from your profile.</p>
+  <form class="inline" method="post" action="/job/{{ job.id | q }}/outreach"><button class="primary" title="About 5¢">Draft outreach</button></form>
+  {% endif %}
+</div>
+<style>
+  .outreach textarea { width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; margin: 4px 0 6px; }
+</style>
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var t = document.getElementById(b.dataset.copy);
+    navigator.clipboard.writeText(t.value).then(function () { var o = b.textContent; b.textContent = "Copied"; setTimeout(function () { b.textContent = o; }, 1500); });
+  });
+});
+document.querySelectorAll("[data-count-for]").forEach(function (s) {
+  var t = document.getElementById(s.dataset.countFor), f = function () { s.textContent = "(" + t.value.length + "/300)"; };
+  t.addEventListener("input", f); f();
+});
+</script>
+{% endif %}
+
 {% if job.status == 'applied' %}
 <h2>Tracking</h2>
 <form method="post" action="/job/{{ job.id | q }}/track" class="panel">

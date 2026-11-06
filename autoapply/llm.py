@@ -67,15 +67,16 @@ class FitBreakdown(Strict):
     experience_level: PartScore   # 0-10
     location: PartScore           # 0-10
     pay: PartScore                # 0-5
+    company_stage: PartScore      # 0-5
     requirements: list[Requirement]
     summary: str
     dealbreakers: list[str]
 
 
-# The six parts of a fit score and their maximums (they add up to 100).
+# The seven parts of a fit score and their maximums (they add up to 100).
 SCORE_PARTS = [("role_family", "Role family fit", 30), ("required", "Required qualifications", 30),
-               ("preferred", "Preferred qualifications", 15), ("experience_level", "Experience level", 10),
-               ("location", "Location & work setup", 10), ("pay", "Pay", 5)]
+               ("preferred", "Preferred qualifications", 10), ("experience_level", "Experience level", 10),
+               ("location", "Location & work setup", 10), ("pay", "Pay", 5), ("company_stage", "Company stage", 5)]
 _STATUS_CREDIT = {"met": 1.0, "partly": 0.5, "not_met": 0.0}
 HARD_MISS_POINTS, HARD_MISS_CAP = 4, 12   # an unmet hard requirement is where recruiters screen people out
 
@@ -105,6 +106,7 @@ def score_from_breakdown(b: FitBreakdown) -> dict:
                              "reason": b.experience_level.reason},
         "location": {"points": max(0, min(caps["location"], b.location.points)), "reason": b.location.reason},
         "pay": {"points": max(0, min(caps["pay"], b.pay.points)), "reason": b.pay.reason},
+        "company_stage": {"points": max(0, min(caps["company_stage"], b.company_stage.points)), "reason": b.company_stage.reason},
     }
     total = sum(p["points"] for p in parts.values())
     reqs = [r.model_dump() for r in b.requirements]
@@ -202,6 +204,13 @@ class ReplyVerdict(Strict):
     category: Literal["confirmation", "rejection", "interview_request", "assessment", "recruiter_reply",
                       "offer", "other"]
     summary: str        # one short sentence
+
+
+class OutreachOut(Strict):
+    contact_titles: list[str]   # who to look for, best first (e.g. "Co-founder & CTO", "Head of Revenue Operations")
+    why_them: str               # one line: why that person
+    linkedin_note: str          # a connection note, under 280 characters
+    message: str                # a short message or email, under about 120 words
 
 
 class JobTitle(Strict):
@@ -451,6 +460,9 @@ class LLM:
             f"- pay (0-5): 5 when the posted range overlaps {self.profile.preferences.desired_salary or 'the target in the preferences'} "
             "OR no pay is posted (missing pay is neutral, "
             "never a gap); 3 a little below; 0 far below.\n"
+            "- company_stage (0-5): how well the company's stage matches what the preferences ask for, judged from the "
+            "posting (funding, headcount) and what you know about the company: 5 a preferred stage, 3 unknown, 1 a stage "
+            "that's fine but not preferred, 0 a stage the preferences rank last.\n"
             "- dealbreakers: only true blockers (required clearance or license, a required degree the candidate "
             "lacks, a location the candidate can't work from, a people-manager role, three or more years short).\n"
             "Each reason under 25 words; summary 1-2 sentences."
@@ -463,7 +475,8 @@ class LLM:
             f"{(job.get('description') or '')[:30000]}\n</job_posting>"
         )
         if previous and previous.get("parts") and change:
-            prior = {k: previous["parts"][k] for k in ("role_family", "experience_level", "location", "pay") if k in previous["parts"]}
+            prior = {k: previous["parts"][k] for k in ("role_family", "experience_level", "location", "pay", "company_stage")
+                     if k in previous["parts"]}
             content += (
                 "\n\n<previous_assessment>\n" + json.dumps({"parts": prior, "requirements": previous.get("requirements", []),
                                                              "summary": previous.get("summary", "")}, indent=1)
@@ -753,6 +766,50 @@ class LLM:
                 return self._without_disclaimers(revised) if _added_words(letter, revised) <= 12 else None
             letter = revised
         return None
+
+    def outreach(self, job: dict) -> OutreachOut:
+        """A short note to a person at the company: who to send it to, a LinkedIn connection note, and a
+        slightly longer message. Fact-checked like a cover letter; anything still flagged is cut."""
+        task = (
+            "Task: the candidate has applied (or is about to apply) to the job below and wants to reach a real person "
+            "there, because a short personal note gets read when a resume in a pile doesn't.\n"
+            "- contact_titles: who to look for, best first. At a small or early-stage company that's usually a founder "
+            "(CEO or CTO) or the person the role reports to; at a larger one, the likely hiring manager's title (use the "
+            "posting's own words, e.g. who the role reports to). Two or three titles.\n"
+            "- why_them: one line on why that person.\n"
+            "- linkedin_note: a connection note under 280 characters. Name the role, then one concrete, true thing the "
+            "candidate has built that matches what this team needs, then a light ask (\"Would love to chat\" or "
+            "\"Just applied and wanted to say hi\").\n"
+            "- message: under about 120 words, for a LinkedIn message or email after they connect. Lead with why this "
+            "role and company specifically (from the posting), then one or two real things the candidate built that map "
+            "to it, then a simple ask for a short call.\n"
+            "Write as the candidate, in the first person, plainly, the way a capable person writes to a peer: no "
+            "flattery, no buzzwords, no exclamation-point enthusiasm, no \"I hope this finds you well\". Facts only from "
+            "the profile, and nothing about why he's leaving his current job or anything negative about any employer. "
+            + self._tense() + TOOL_NAMING
+        )
+        content = (f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
+                   f"{(job.get('description') or '')[:20000]}\n</job_posting>" + self._voice())
+        out = self._call(task, content, OutreachOut, effort="medium", max_tokens=4000)
+        for field in ("linkedin_note", "message"):
+            text = getattr(out, field)
+            check = self._call(
+                "Task: fact-check the outreach note below against the candidate profile. Flag only concrete claims about "
+                "the candidate the profile doesn't support (experience, projects, tools, numbers, titles, results). "
+                "Statements about the company from the posting are fine, and so are plain wishes or asks. If you decide "
+                "something is supported, don't list it. Use item_id 'note'. Return an empty list if it is accurate.",
+                f"<job_posting>\n{job['company']} — {job['title']}\n{(job.get('description') or '')[:8000]}\n</job_posting>\n\n"
+                f"<note>\n{text}\n</note>", FactCheck, effort="medium")
+            if check.issues:
+                problems = "\n".join(f"- {i.problem}" for i in check.issues)
+                fixed = self._call(
+                    "Task: revise the note so every statement about the candidate is supported by the profile: remove the "
+                    "statements listed (adjust only the words around them so it still reads well) and add nothing.",
+                    f"<note>\n{text}\n</note>\n\n<problems>\n{problems}\n</problems>", CoverLetterOut, effort="medium").body.strip()
+                setattr(out, field, fixed if _added_words(text, fixed) <= 12 else "")
+        if len(out.linkedin_note) > 300:
+            out.linkedin_note = out.linkedin_note[:297].rsplit(" ", 1)[0] + "…"
+        return out
 
     def _without_disclaimers(self, letter: str) -> str:
         """A cover letter that talks about what it can't claim gets one rewrite; any such sentence that
