@@ -161,7 +161,9 @@ class Panel:
         me = ids[slot]
         content = (f"<job_posting>\n{job['company']} — {job['title']}\n\n{(job.get('description') or '')[:12000]}\n</job_posting>\n\n"
                    + "\n\n".join(f"<resume id=\"{i}\">\n{text}\n</resume>" for i, text in zip(ids, stack)))
-        task = (f"{persona}\n\nThese are {len(stack)} applications to the job below; you can move at most {ADVANCE} to a "
+        from datetime import date
+
+        task = (f"{persona}\n\nToday is {date.today():%B %-d, %Y}. These are {len(stack)} applications to the job below; you can move at most {ADVANCE} to a "
                 "recruiter screen, as you really would with a pile like this. Rank all of them best first, list the ids you "
                 f"would advance (at most {ADVANCE}, fewer if none deserve it), and give each id a one-line note on why it "
                 "landed where it did. Judge only job-related content.")
