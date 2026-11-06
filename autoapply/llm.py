@@ -318,6 +318,29 @@ def _added_words(before: str, after: str) -> int:
     return sum(j2 - j1 for tag, _, _, j1, j2 in ops if tag in ("replace", "insert"))
 
 
+def _tenure_months(start: str, end: str) -> int | None:
+    """Months between "June 2025" and "September 2026" (or "Present")."""
+    from datetime import date, datetime
+
+    def parse(v: str):
+        if v.strip().lower() in ("present", "current", ""):
+            return date.today()
+        for fmt in ("%B %Y", "%b %Y", "%Y"):
+            try:
+                return datetime.strptime(v.strip(), fmt).date()
+            except ValueError:
+                pass
+        return None
+    a, b = parse(start), parse(end)
+    return None if a is None or b is None else max(1, (b.year - a.year) * 12 + b.month - a.month)
+
+
+def bullet_cap(start: str, end: str) -> int:
+    """Bullets a role gets on a one-page resume: a short stint can't be the heaviest section."""
+    months = _tenure_months(start, end)
+    return 5 if months is None else 3 if months < 6 else 4 if months < 12 else 5
+
+
 class LLM:
     def __init__(self, profile: Profile, model: str = "claude-sonnet-5-5", client: anthropic.Anthropic | None = None,
                  scoring_model: str | None = None):
@@ -480,9 +503,14 @@ class LLM:
             "Keep the whole resume to one page (at most about 12 bullets in total).\n"
             "- " + TOOL_NAMING + " In skills, list the most relevant items first."
         )
+        caps = "\n".join(f"- {e.id}: at most {bullet_cap(e.start, e.end)} bullets"
+                          for e in self.profile.experience if e.on_resume and e.bullets)
         content = (
             f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
-            f"{(job.get('description') or '')[:30000]}\n</job_posting>"
+            f"{(job.get('description') or '')[:30000]}\n</job_posting>\n\n"
+            "<bullet_limits>\nWeight each role by its relevance and impact, not just how recent it is. Stay within these "
+            "limits (set by how long each role lasted), and give an older role with measured results at least 2 bullets.\n"
+            + caps + "\n</bullet_limits>"
         )
         draft = self._call(task, content, TailoredResumeOut, effort="high")
         resume = self._validate_tailoring(draft)
@@ -522,6 +550,10 @@ class LLM:
                 lead = next((b for b in kept if lead_id in b.source_ids), None) or \
                     ResumeBullet(text=e.bullets[e.lead_bullet], source_ids=[lead_id])
                 kept = [lead] + [b for b in kept if b is not lead]
+            cap = bullet_cap(e.start, e.end)
+            if len(kept) > cap:
+                notes.append(f"trimmed {e.id} to {cap} bullets")
+                kept = kept[:cap]
             experience.append(ResumeRole(
                 id=e.id, company=e.company, title=e.title, location=e.location, start=e.title_start, end=e.end,
                 earlier_titles=e.earlier_titles, note=e.note, bullets=kept,
