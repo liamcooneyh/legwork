@@ -91,7 +91,8 @@ def candidates_for(msg: mailbox.Message, body: str, jobs: list) -> list:
         key = company_key(j["company"] or "")
         board = re.sub(r"[^a-z0-9]", "", (j["board"] or "").lower())
         hit = (len(key) >= 4 and key in compact) or (len(board) >= 4 and board in compact) or \
-              (key and key in re.sub(r"[^a-z0-9]", "", domain))
+              (key and key in re.sub(r"[^a-z0-9]", "", domain)) or \
+              (2 <= len(key) < 4 and _whole_word(j["company"] or "", blob))
         if not hit:
             continue
         applied = _parse_date_iso(j["applied_at"] or j["updated_at"])
@@ -99,6 +100,12 @@ def candidates_for(msg: mailbox.Message, body: str, jobs: list) -> list:
             continue  # older than the application, so not a reply to it
         out.append(j)
     return out[:6]
+
+
+def _whole_word(name: str, blob: str) -> bool:
+    """A short company name (like "Roo") as a standalone word, since a bare substring would match everywhere."""
+    name = name.strip().lower()
+    return bool(name) and re.search(rf"(?<![a-z0-9]){re.escape(name)}(?![a-z0-9])", blob) is not None
 
 
 def _parse_date_iso(value: str | None) -> datetime | None:

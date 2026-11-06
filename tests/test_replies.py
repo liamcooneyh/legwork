@@ -45,6 +45,16 @@ def test_candidates_match_company_and_skip_older_mail():
     assert replies.candidates_for(other, other.text, [job]) == []
 
 
+def test_short_company_names_match_as_whole_words():
+    roo = _job(id="ashby:roo:1", company="Roo", board="roo")
+    msg = mailbox.Message("4", "Update on your application to Roo", "", "Thank you for your interest in Roo.",
+                          "Roo Hiring <no-reply@ashbyhq.com>", "Mon, 06 Oct 2026 10:00:00 +0000")
+    assert replies.candidates_for(msg, msg.text, [roo]) == [roo]
+    noise = mailbox.Message("5", "Your room booking", "", "Kangaroo tours", "Hotel <hi@hotel.com>",
+                            "Mon, 06 Oct 2026 10:00:00 +0000")
+    assert replies.candidates_for(noise, noise.text, [roo]) == []
+
+
 def test_check_updates_stage_and_records_email(monkeypatch):
     db.init()
     job = _job(id="greenhouse:stripe:99")
