@@ -514,7 +514,10 @@ class LLM:
             "based on in source_ids (ids look like 'acme.0'), using only ids from that same role. "
             "For the most relevant bullets, reword them to lead with what this posting cares about and to use "
             "the posting's own terms where those terms truthfully describe the same work (e.g. 'CRM' vs "
-            "'Salesforce' only if accurate). Tighten wordy bullets. You may merge two bullets. Every claim, "
+            "'Salesforce' only if accurate). Tighten wordy bullets. You may merge two bullets, except a bullet that "
+            "describes a partial contribution ('helped build', 'supported') or a demo: keep those on their own with "
+            "that wording intact, so a shared or demo project never reads as his own production work. Never write "
+            "in the first person ('I', 'my') in a bullet. Every claim, "
             "number, tool, and scope in the text must appear in the cited bullets; when in doubt, keep the "
             "original wording. Write the current role's bullets in the present tense and every other role's in the past "
             "tense. Keep the voice confident and active: lead with what was built or done and what it did, never flat "
@@ -813,30 +816,42 @@ class LLM:
             "- to_name: if people are listed under people_found, pick the single best one to contact about this role "
             "(at a small or early-stage company usually a founder; otherwise whoever the role reports to or leads that "
             "team) and write the note and message to them, greeting them by first name. Use the name exactly as "
-            "listed. Leave it empty if no one is listed or no one fits, and then write without a name.\n"
+            "listed. Leave it empty if no one is listed or no one fits, and then skip the greeting entirely and start with \"I just applied\" (never a bare \"Hi,\").\n"
             "- contact_titles: who to look for, best first. At a small or early-stage company that's usually a founder "
             "(CEO or CTO) or the person the role reports to; at a larger one, the likely hiring manager's title (use the "
             "posting's own words, e.g. who the role reports to). Two or three titles.\n"
             "- why_them: one line on why that person.\n"
-            "- linkedin_note: a connection note under 280 characters. Name the role, then one concrete, true thing the "
-            "candidate has built that matches what this team needs, then a light ask (\"Would love to chat\" or "
-            "\"Just applied and wanted to say hi\").\n"
-            "- message: under about 120 words, for a LinkedIn message or email after they connect. Lead with why this "
-            "role and company specifically (from the posting), then one or two real things the candidate built that map "
-            "to it, then a simple ask for a short call.\n"
-            "Write as the candidate, in the first person, plainly, the way a capable person writes to a peer: no "
-            "flattery, no buzzwords, no exclamation-point enthusiasm, no \"I hope this finds you well\". Facts only from "
-            "the profile, and nothing about why he's leaving his current job or anything negative about any employer. "
-            + self._tense() + TOOL_NAMING
+            "- linkedin_note: one or two short sentences, under 200 characters. Say he just applied for the role and one "
+            "plain, specific thing he's built that's relevant, then a low-key close like \"Would love to connect.\"\n"
+            "- message: three to five short sentences, 50 to 80 words, for after they connect or by email. Say he applied, "
+            "one or two specific things he's actually done that are relevant (each in its own short sentence, with the "
+            "result if there's a real one), and a simple ask such as \"Would you be open to a quick chat?\"\n"
+            "How these should read: like a quick note from one busy, capable person to another, not a cover letter.\n"
+            "- Never restate, quote, or paraphrase the job posting, and never describe the company back to them; they know "
+            "what they do. Use the posting only to decide which of his work is relevant.\n"
+            "- Don't explain how his background \"matches\" or \"maps to\" the role. Say what he did and let them connect it.\n"
+            "- No tool lists. Name a tool only when it's the point of the sentence, at most two in the whole message.\n"
+            "- Plain words, contractions, short sentences. No em dashes, semicolons, or colons before lists. Oxford comma "
+            "in any list.\n"
+            "- No flattery, buzzwords, exclamation points, or \"I hope this finds you well\".\n"
+            "Bad (parrots the posting, explains the match): \"Sola's pitch, agents that run processes across messy legacy "
+            "systems, matches the work I've done: diagnosing client systems where the problem isn't yet clear.\"\n"
+            "Good (just says what he did): \"At StreamForce I was the main technical person on five client accounts. One "
+            "integration I built, a Planhat-to-Salesforce webhook, ran on its own in production.\"\n"
+            "Write as the candidate, in the first person. Facts only from the profile, and nothing about why he's leaving "
+            "his current job or anything negative about any employer. " + self._tense()
         )
         found = "\n".join(f"- {p['name']}, {p.get('title') or 'title unknown'} ({p.get('where') or p.get('source')})"
                            for p in (people or []))
         content = (f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
                    f"{(job.get('description') or '')[:20000]}\n</job_posting>"
-                   + (f"\n\n<people_found>\n{found}\n</people_found>" if found else "") + self._voice())
+                   + (f"\n\n<people_found>\n{found}\n</people_found>" if found else ""))
         out = self._call(task, content, OutreachOut, effort="medium", max_tokens=4000)
-        if out.to_name and out.to_name not in {p["name"] for p in (people or [])}:
-            out.to_name = ""
+        # The model sometimes shortens the name ("Shadi" for "Shadi Baqleh"): map it back to the listed person.
+        wanted = out.to_name.strip().lower()
+        match = [p["name"] for p in (people or []) if wanted and (p["name"].lower() == wanted
+                 or p["name"].lower().split()[0] == wanted.split()[0])]
+        out.to_name = match[0] if len(match) == 1 else ""
         for field in ("linkedin_note", "message"):
             text = getattr(out, field)
             check = self._call(
