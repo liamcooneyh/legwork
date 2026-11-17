@@ -209,7 +209,7 @@
 </div>
 
 {% if ready or submitting %}
-<h2>Ready to fill ({{ ready|length }}) {% include "_remote_toggle.html" %}</h2>
+<h2>Ready to fill ({{ ready|length }}) {% include "_remote_toggle.html" %} {% include "_startup_toggle.html" %}</h2>
 <p class="muted">Prepared, not sent. <i>Fill in Chrome</i> opens the form and the extension fills it; look it over and press Submit. Click a title to see the resume, cover letter, and answers first.</p>
 <div class="table-wrap"><table>
   <tr>{{ cell.head('<th></th>') }}</tr>
@@ -217,7 +217,7 @@
   <tr>{{ cell.core(j) }}<td><span class="pill submitting">submitting…</span></td></tr>
   {% endfor %}
   {% for j in ready %}
-  <tr data-remote="{{ 1 if j | remote else 0 }}">
+  <tr data-remote="{{ 1 if j | remote else 0 }}" data-startup="{{ 1 if j | startup else 0 }}">
     {{ cell.core(j) }}
     <td class="act"><div class="rowacts">
       {% set fu = j | fill_url %}{% if fu %}<a class="button primary" href="{{ fu }}" target="_blank" rel="noopener" title="Opens the form; the extension fills it and you press Submit">Fill in Chrome ↗</a>{% else %}<a class="button primary" href="/job/{{ j.id | q }}">Open</a>{% endif %}
@@ -242,7 +242,7 @@
 <div class="table-wrap"><table>
   <tr>{{ cell.head('<th>Status</th><th></th>') }}</tr>
   {% for j in manual_linkedin %}
-  <tr data-remote="{{ 1 if j | remote else 0 }}">
+  <tr data-remote="{{ 1 if j | remote else 0 }}" data-startup="{{ 1 if j | startup else 0 }}">
     {{ cell.core(j) }}
     <td class="muted" style="font-size:13px">{{ j.status_reason or "" }}</td>
     <td class="act"><div class="rowacts">

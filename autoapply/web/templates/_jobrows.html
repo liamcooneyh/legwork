@@ -2,7 +2,7 @@
 <div class="table-wrap"><table>
   <tr>{{ cell.head('<th>Status</th><th class="hide-sm">Updated</th>' ~ ('<th></th>' if row_actions else '')) }}</tr>
   {% for j in rows %}
-  <tr data-remote="{{ 1 if j | remote else 0 }}">
+  <tr data-remote="{{ 1 if j | remote else 0 }}" data-startup="{{ 1 if j | startup else 0 }}">
     {{ cell.core(j) }}
     <td><span class="pill {{ j.status }}">{{ j.status | label }}</span>{% if j.status_reason %}<br><span class="muted" style="font-size:12px">{{ j.status_reason[:140] }}</span>{% endif %}</td>
     <td class="hide-sm muted" data-sort="{{ j.updated_at }}">{{ (j.updated_at | et) }}</td>

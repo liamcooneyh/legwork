@@ -117,6 +117,18 @@ def _eastern(value, with_time: bool = True) -> str:
 TEMPLATES.env.filters["et"] = _eastern
 _REMOTE = re.compile(r"\bremote\b|\banywhere\b|work from home|\bwfh\b|\bdistributed\b", re.I)
 TEMPLATES.env.filters["remote"] = lambda j: bool(_REMOTE.search(f"{j['location'] or ''} {j['title'] or ''}"))
+
+
+def _startup(job) -> bool:
+    """An early-stage company: the score's company-stage part gave it 4 or 5 of 5 (a stage you prefer)."""
+    try:
+        parts = json.loads(job["score_json"] or "{}").get("parts") or {}
+    except (IndexError, KeyError, TypeError, ValueError):
+        return False
+    return ((parts.get("company_stage") or {}).get("points") or 0) >= 4
+
+
+TEMPLATES.env.filters["startup"] = _startup
 from ..llm import SCORE_PARTS  # noqa: E402  (score breakdown on the job page)
 TEMPLATES.env.globals["SCORE_PARTS"] = SCORE_PARTS
 TEMPLATES.env.filters["et_date"] = lambda v: _eastern(v, with_time=False)

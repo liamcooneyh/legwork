@@ -245,6 +245,8 @@
   .remote-toggle[aria-pressed="true"] { background: var(--sky-bg); color: var(--sky); border-color: var(--sky); }
   h2 .remote-toggle { margin-left: 4px; }
   body.remote-only tr[data-remote="0"] { display: none; }
+  body.startup-only tr[data-startup="0"] { display: none; }
+  .remote-toggle[data-startup-toggle][aria-pressed="true"] { background: var(--lime-bg); color: var(--lime); border-color: var(--lime); }
 </style>
 <style>
   .tsearch { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; }
@@ -369,6 +371,27 @@ document.addEventListener("click", function (e) {
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-remote-toggle]"); if (!b) return;
+    on = !on; try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (err) {}
+    apply();
+  });
+  apply();
+})();
+</script>
+<script>
+(function () {
+  // "Startups only": hides rows whose company isn't at a preferred stage. Works alongside "Remote only".
+  var KEY = "aa-startup-only", on = false;
+  try { on = localStorage.getItem(KEY) === "1"; } catch (e) {}
+  function apply() {
+    document.body.classList.toggle("startup-only", on);
+    document.querySelectorAll("[data-startup-toggle]").forEach(function (b) {
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      var rows = document.querySelectorAll("tr[data-startup]").length, shown = document.querySelectorAll('tr[data-startup="1"]').length;
+      b.textContent = on ? "Startups only ✓ (" + shown + " of " + rows + ")" : "Startups only";
+    });
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-startup-toggle]"); if (!b) return;
     on = !on; try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (err) {}
     apply();
   });

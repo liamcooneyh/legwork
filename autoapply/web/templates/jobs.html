@@ -16,6 +16,6 @@
     {% for s in ss %}{% if counts.get(s, 0) or s == status %}<a class="pill {{ s }}{% if s == status %} on{% endif %}" href="/jobs?status={{ s }}">{{ s | label }} <b>{{ counts.get(s, 0) }}</b></a>{% endif %}{% endfor %}
   </div>{% endif %}{% endfor %}
 </div>
-<span hidden data-joins-search>{% include "_remote_toggle.html" %}</span>
+<span hidden data-joins-search>{% include "_remote_toggle.html" %} {% include "_startup_toggle.html" %}</span>
 {% set rows = jobs %}{% include "_jobrows.html" %}
 {% endblock %}
