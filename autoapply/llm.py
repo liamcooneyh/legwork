@@ -206,7 +206,20 @@ class ReplyVerdict(Strict):
     summary: str        # one short sentence
 
 
+class FoundPerson(Strict):
+    name: str
+    title: str          # as the source writes it
+    where: str          # one short phrase: why this person (e.g. "the role reports to them, per the posting")
+    source: str         # "posting" or "team page"
+    linkedin_url: str   # only a profile link given in the sources that clearly belongs to them, else ""
+
+
+class PeopleOut(Strict):
+    people: list[FoundPerson]
+
+
 class OutreachOut(Strict):
+    to_name: str                # the found person the note is written to, or "" when none fit
     contact_titles: list[str]   # who to look for, best first (e.g. "Co-founder & CTO", "Head of Revenue Operations")
     why_them: str               # one line: why that person
     linkedin_note: str          # a connection note, under 280 characters
@@ -767,12 +780,40 @@ class LLM:
             letter = revised
         return None
 
-    def outreach(self, job: dict) -> OutreachOut:
+    def people_from_text(self, job: dict, posting: str, team_text: str, team_links: list[str]) -> list[FoundPerson]:
+        """Named people in the posting and on the company's team page who'd be worth contacting about this job.
+        Only names that appear in the text; LinkedIn links only from the links found on that page."""
+        task = (
+            "Task: list real people named in the sources below who would be good to contact about this job: whoever "
+            "the role reports to or the hiring manager, a recruiter or talent person named in the posting, founders or "
+            "executives, and leaders of the team the role joins. Only include names that literally appear in the text; "
+            "never guess or complete a name. Skip customers, investors, advisors, and people quoted in testimonials. "
+            "For each: name; title as written; where, one short phrase on why they're a good contact (e.g. 'the role "
+            "reports to them, per the posting'); source, 'posting' or 'team page'; linkedin_url, only if one of the "
+            "listed profile links clearly belongs to that person, else an empty string. At most six people, the most "
+            "relevant first. Return an empty list if no one fits."
+        )
+        content = (f"<job>\nCompany: {job['company']}\nTitle: {job['title']}\n</job>\n\n"
+                   f"<posting>\n{posting[:15000]}\n</posting>\n\n<team_page>\n{team_text[:12000]}\n</team_page>\n\n"
+                   f"<profile_links>\n" + "\n".join(team_links[:40]) + "\n</profile_links>")
+        out = self._call(task, content, PeopleOut, effort="low", max_tokens=4000, model=self.scoring_model,
+                         with_profile=False)
+        allowed = set(team_links)
+        for p in out.people:
+            if p.linkedin_url not in allowed:
+                p.linkedin_url = ""   # never a link the sources didn't contain
+        return out.people
+
+    def outreach(self, job: dict, people: list[dict] | None = None) -> OutreachOut:
         """A short note to a person at the company: who to send it to, a LinkedIn connection note, and a
         slightly longer message. Fact-checked like a cover letter; anything still flagged is cut."""
         task = (
             "Task: the candidate has applied (or is about to apply) to the job below and wants to reach a real person "
             "there, because a short personal note gets read when a resume in a pile doesn't.\n"
+            "- to_name: if people are listed under people_found, pick the single best one to contact about this role "
+            "(at a small or early-stage company usually a founder; otherwise whoever the role reports to or leads that "
+            "team) and write the note and message to them, greeting them by first name. Use the name exactly as "
+            "listed. Leave it empty if no one is listed or no one fits, and then write without a name.\n"
             "- contact_titles: who to look for, best first. At a small or early-stage company that's usually a founder "
             "(CEO or CTO) or the person the role reports to; at a larger one, the likely hiring manager's title (use the "
             "posting's own words, e.g. who the role reports to). Two or three titles.\n"
@@ -788,9 +829,14 @@ class LLM:
             "the profile, and nothing about why he's leaving his current job or anything negative about any employer. "
             + self._tense() + TOOL_NAMING
         )
+        found = "\n".join(f"- {p['name']}, {p.get('title') or 'title unknown'} ({p.get('where') or p.get('source')})"
+                           for p in (people or []))
         content = (f"<job_posting>\nCompany: {job['company']}\nTitle: {job['title']}\n\n"
-                   f"{(job.get('description') or '')[:20000]}\n</job_posting>" + self._voice())
+                   f"{(job.get('description') or '')[:20000]}\n</job_posting>"
+                   + (f"\n\n<people_found>\n{found}\n</people_found>" if found else "") + self._voice())
         out = self._call(task, content, OutreachOut, effort="medium", max_tokens=4000)
+        if out.to_name and out.to_name not in {p["name"] for p in (people or [])}:
+            out.to_name = ""
         for field in ("linkedin_note", "message"):
             text = getattr(out, field)
             check = self._call(

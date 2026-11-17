@@ -157,7 +157,16 @@
 <h2 id="outreach" style="scroll-margin-top:80px">Reach a person</h2>
 <div class="panel outreach">
   {% if outreach %}
-  <p style="margin-top:0"><b>Who to contact:</b> {{ outreach.contact_titles | join(", or ") }}<br>
+  {% if outreach.people %}
+  <p style="margin:0 0 6px"><b>People to reach</b></p>
+  <ul class="people">{% for pp in outreach.people %}
+    <li><b>{{ pp.name }}</b>{% if pp.title %}, {{ pp.title }}{% endif %}{% if outreach.to_name and pp.name == outreach.to_name %} <span class="pill ready">note below is written to them</span>{% endif %}<br>
+      <span class="muted" style="font-size:13px">{{ pp.where }}{% if pp.source_url %} · <a href="{{ pp.source_url }}" target="_blank" rel="noopener">{{ pp.source }}</a>{% else %} · {{ pp.source }}{% endif %}</span><br>
+      {% if pp.linkedin_url %}<a href="{{ pp.linkedin_url }}" target="_blank" rel="noopener" style="font-size:14px">LinkedIn profile ↗</a>{% else %}<a href="https://www.linkedin.com/search/results/people/?keywords={{ (pp.name ~ ' ' ~ job.company) | urlencode }}" target="_blank" rel="noopener" style="font-size:14px">Find {{ pp.name.split(' ')[0] }} on LinkedIn ↗</a>{% endif %}</li>
+  {% endfor %}</ul>
+  <p class="muted" style="font-size:13px;margin-top:4px">Found on public pages only. Check the profile is the right person before you send.</p>
+  {% endif %}
+  <p style="margin-top:{{ '10px' if outreach.people else '0' }}"><b>{{ 'If none of them fit, look for' if outreach.people else 'Who to contact:' }}</b> {{ outreach.contact_titles | join(", or ") }}<br>
     <span class="muted" style="font-size:14px">{{ outreach.why_them }}</span></p>
   <p style="font-size:14px">{% for t in outreach.contact_titles %}<a href="https://www.linkedin.com/search/results/people/?keywords={{ (job.company ~ ' ' ~ t) | urlencode }}" target="_blank" rel="noopener">Find the {{ t }} on LinkedIn ↗</a>{{ " · " if not loop.last }}{% endfor %}</p>
   {% if outreach.linkedin_note %}
@@ -173,12 +182,14 @@
   {% endif %}
   {% else %}
   <p class="muted" style="margin-top:0">A short note to a founder or the hiring manager gets read when a resume in a pile doesn't.
-    This drafts who to contact, a connection note, and a short message from your profile.</p>
+    This looks up named people on public pages (the posting, YC, the company site), then drafts a connection note and a short message to the best one.</p>
   <form class="inline" method="post" action="/job/{{ job.id | q }}/outreach"><button class="primary" title="About 5¢">Draft outreach</button></form>
   {% endif %}
 </div>
 <style>
   .outreach textarea { width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; margin: 4px 0 6px; }
+  .outreach ul.people { margin: 0; padding-left: 18px; }
+  .outreach ul.people li { margin: 0 0 8px; }
 </style>
 <script>
 document.querySelectorAll("[data-copy]").forEach(function (b) {

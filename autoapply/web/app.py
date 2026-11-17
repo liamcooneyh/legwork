@@ -617,9 +617,16 @@ def job_outreach(job_id: str):
         msg = "Set ANTHROPIC_API_KEY to draft outreach"
     else:
         try:
-            out = llm.outreach(dict(job))
-            db.kv_set_json(f"outreach:{job_id}", {**out.model_dump(), "at": db.now(), "cost": round(llm.cost_usd(), 3)})
-            msg = "Outreach drafted"
+            from ..people import find_people
+
+            try:
+                people = find_people(dict(job), llm)
+            except Exception:   # a lookup failure shouldn't stop the note; it falls back to titles
+                people = []
+            out = llm.outreach(dict(job), people)
+            db.kv_set_json(f"outreach:{job_id}", {**out.model_dump(), "people": people, "at": db.now(),
+                                                  "cost": round(llm.cost_usd(), 3)})
+            msg = f"Outreach drafted ({len(people)} {'person' if len(people) == 1 else 'people'} found)"
         except Exception as e:
             msg = f"Couldn't draft outreach: {str(e)[:160]}"
     return RedirectResponse(f"/job/{quote(job_id, safe='')}?msg={quote(msg)}#outreach", status_code=303)
